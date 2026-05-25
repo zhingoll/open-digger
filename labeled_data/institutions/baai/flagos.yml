@@ -1,0 +1,15 @@
+name: FlagOS
+description: 'FlagOS: A Unified, Open-Source AI System Software Stack.'
+description_zh: FlagOS 是一个统一、开源的 AI 系统软件栈。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 242732894
+          name: flagos-ai
+        - id: 114467038
+          name: FlagOpen
+        - id: 200870987
+          name: FlagTree

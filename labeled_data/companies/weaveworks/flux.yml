@@ -1,0 +1,11 @@
+name: Flux
+description: Open and extensible GitOps-based continuous delivery for Kubernetes.
+description_zh: 基于 GitOps 的开源可扩展 Kubernetes 持续交付解决方案。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 52158677
+          name: fluxcd

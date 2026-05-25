@@ -1,0 +1,19 @@
+name: JavaScript/TypeScript
+description: The foundational, dynamic, and interpreted programming language of the web.
+description_zh: 网络编程基础，动态解释执行的脚本语言。
+type: Project
+data:
+  labels:
+    - ':foundations/linux_foundation/openjs/node.js'
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 42048915
+          name: denoland
+        - id: 113781
+          name: v8
+        - id: 43163769
+          name: mozilla-spidermonkey
+        - id: 3637556
+          name: DefinitelyTyped

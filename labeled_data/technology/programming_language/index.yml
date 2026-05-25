@@ -1,0 +1,24 @@
+name: Programming Language
+name_zh: 编程语言
+type: Tech-0
+data:
+  labels:
+    - ':companies/apple/swift'
+    - ':companies/google/dart'
+    - ':companies/google/go'
+    - ':companies/huawei/cangjie'
+    - ':companies/jetbrains/kotlin'
+    - ':companies/microsoft/dotnet'
+    - ':companies/mozilla/rust'
+    - ':companies/oracle/java'
+    - ':foundations/php/php'
+    - ':foundations/python/python'
+    - ':foundations/ruby/ruby'
+    - ':foundations/zig/zig'
+    - ':institutions/bell_labs/cpp'
+    - ':universities/mit/julia'
+    - ':universities/puc_rio/lua'
+    - elixir
+    - javascript
+    - nim
+    - scala

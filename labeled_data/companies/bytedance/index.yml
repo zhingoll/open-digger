@@ -6,9 +6,10 @@ data:
     - byconity
     - bytees
     - cloudwego
+    - deer_flow
     - lark
     - oceanengine
-    - volcengine
+    - verl
   platforms:
     - name: GitHub
       type: Code Hosting

@@ -1,9 +1,0 @@
-name: EosphorosAI
-type: Project
-data:
-  platforms:
-    - name: GitHub
-      type: Code Hosting
-      orgs:
-        - id: 140580304
-          name: eosphoros-ai

@@ -1,6 +1,15 @@
 name: Database - Wide Column
+name_zh: 宽列数据库
 type: Tech-1
 data:
+  labels:
+    - ':companies/databricks/delta_lake'
+    - ':companies/imply/druid'
+    - ':companies/influxdata/influxdb'
+    - ':companies/meta/cassandra'
+    - ':companies/meta/prestodb'
+    - ':companies/microsoft/hbase'
+    - ':companies/victoriametrics/victoriametrics'
   platforms:
     - name: GitHub
       type: Code Hosting

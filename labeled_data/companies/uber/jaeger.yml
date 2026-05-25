@@ -1,0 +1,11 @@
+name: Jaeger
+description: CNCF Jaeger, a Distributed Tracing Platform
+description_zh: CNCF Jaeger，一个分布式追踪平台
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 28545596
+          name: jaegertracing

@@ -1,6 +1,19 @@
 name: Operating System
+name_zh: 操作系统
 type: Tech-0
 data:
+  labels:
+    - ':companies/amazon/bottlerocket'
+    - ':companies/amazon/freertos'
+    - ':companies/huawei/openeuler'
+    - ':companies/huawei/openharmony'
+    - ':foundations/apache/nuttx'
+    - ':foundations/gentoo/gentoo'
+    - ':foundations/nixos/nixos'
+    - ':projects/openwrt'
+    - ':projects/systemd'
+    - ':projects/void_linux'
+    - ':projects/wolfi'
   platforms:
     - name: GitHub
       type: Code Hosting
@@ -15,8 +28,6 @@ data:
           name: s-matyukevich/raspberry-pi-os
         - id: 105627846
           name: reactos/reactos
-        - id: 179385712
-          name: bottlerocket-os/bottlerocket
         - id: 11572519
           name: NodeOS/NodeOS
         - id: 1259258

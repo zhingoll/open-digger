@@ -1,0 +1,17 @@
+name: ART
+description: 'Agent Reinforcement Trainer: train multi-step agents for real-world tasks using GRPO.'
+description_zh: 代理强化训练器：使用GRPO训练用于现实任务的多步骤智能体。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 946178371
+          name: OpenPipe/ART
+        - id: 1043607189
+          name: OpenPipe/art-notebooks
+        - id: 1017556799
+          name: OpenPipe/art-langgraph
+        - id: 1018065945
+          name: OpenPipe/art-star-count

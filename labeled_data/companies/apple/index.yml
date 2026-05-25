@@ -1,5 +1,14 @@
 name: Apple
+name_zh: 苹果
 type: Company
 data:
   labels:
+    - foundationdb
+    - mlx
     - swift
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 10639145
+          name: apple

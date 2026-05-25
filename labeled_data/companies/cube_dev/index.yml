@@ -1,0 +1,11 @@
+name: Cube Dev
+type: Company
+data:
+  labels:
+    - cube
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 23642077
+          name: cubedevinc

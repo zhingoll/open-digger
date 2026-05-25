@@ -1,0 +1,27 @@
+name: Apache DolphinScheduler
+description: Apache DolphinScheduler is a modern, low-code data orchestration platform for high-performance workflows.
+description_zh: Apache DolphinScheduler 是一个现代化、低代码的数据编排平台，用于高性能工作流。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 173335706
+          name: apache/dolphinscheduler
+        - id: 206380457
+          name: apache/dolphinscheduler-website
+        - id: 562819934
+          name: apache/dolphinscheduler-sdk-python
+        - id: 510199196
+          name: apache/dolphinscheduler-operator
+        - id: 530045849
+          name: apache/dolphinscheduler-studio
+        - id: 279778933
+          name: apache/dolphinscheduler-maven-plugin
+        - id: 493066430
+          name: apache/dolphinscheduler-mlflow
+        - id: 430636966
+          name: apache/dolphinscheduler-ambari
+        - id: 577321903
+          name: apache/dolphinscheduler-datawarehouse

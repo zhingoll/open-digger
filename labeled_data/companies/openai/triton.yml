@@ -1,0 +1,11 @@
+name: Triton
+description: Triton is a language and compiler for efficient deep-learning primitives.
+description_zh: Triton 是一个用于编写高效深度学习原语的语言和编译器。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 169110177
+          name: triton-lang

@@ -1,0 +1,11 @@
+name: Fivetran
+type: Company
+data:
+  labels:
+    - dbt
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 2722259
+          name: fivetran

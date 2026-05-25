@@ -1,0 +1,11 @@
+name: SurrealDB
+description: A scalable, distributed, collaborative document-graph database for the realtime web
+description_zh: 面向实时网络的可扩展分布式协作文档-图数据库
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 10982346
+          name: surrealdb

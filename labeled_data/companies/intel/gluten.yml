@@ -1,0 +1,13 @@
+name: Apache Gluten
+description: Gluten offloads JVM-based SQL engines to native engines for performance improvement.
+description_zh: Gluten 将 JVM 基础的 SQL 引擎卸载到原生引擎以提升性能。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 435375021
+          name: apache/incubator-gluten
+        - id: 754510789
+          name: apache/incubator-gluten-site

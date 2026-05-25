@@ -1,4 +1,6 @@
 name: Python
+description: Python is a high-level, general-purpose programming language.
+description_zh: Python 是一种高级通用编程语言。
 type: Project
 data:
   platforms:
@@ -7,3 +9,11 @@ data:
       orgs:
         - id: 1525981
           name: python
+        - id: 318667
+          name: pypy
+        - id: 10533356
+          name: jython
+        - id: 18199
+          name: IronLanguages
+        - id: 6298560
+          name: micropython

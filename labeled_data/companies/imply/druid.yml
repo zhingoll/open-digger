@@ -1,0 +1,15 @@
+name: Apache Druid
+description: 'Apache Druid: a high performance real-time analytics database.'
+description_zh: Apache Druid：高性能实时分析数据库。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 6358188
+          name: apache/druid
+        - id: 129137599
+          name: apache/druid-website
+        - id: 168870773
+          name: apache/druid-website-src

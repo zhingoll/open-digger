@@ -1,7 +1,9 @@
 name: Intel
+name_zh: 英特尔
 type: Company
 data:
   labels:
+    - gluten
     - nwjs
     - openvino
   platforms:

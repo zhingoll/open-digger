@@ -1,0 +1,11 @@
+name: OpenVoice
+description: 'OpenVoice: Instant voice cloning with tone, style, and cross-lingual support.'
+description_zh: OpenVoice：即时语音克隆，支持音色、风格和跨语言控制。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 725089041
+          name: myshell-ai/OpenVoice

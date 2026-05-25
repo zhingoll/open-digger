@@ -1,0 +1,114 @@
+name: Cloud Native - Observability and Analysis - Observability
+type: Tech-2
+data:
+  labels:
+    - ':companies/amazon/opensearch'
+    - ':companies/datadog/datadog'
+    - ':companies/google/opentelemetry'
+    - ':companies/grafana/cortex'
+    - ':companies/improbable/thanos'
+    - ':companies/influxdata/influxdb'
+    - ':companies/parseable/parseable'
+    - ':companies/soundcloud/prometheus'
+    - ':companies/treasure_data/fluentd'
+    - ':companies/uber/jaeger'
+    - ':companies/victoriametrics/victoriametrics'
+    - ':foundations/linux_foundation/cncf/openmetrics'
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 76088862
+          name: megaease/easeagent
+        - id: 99251094
+          name: elastic/apm-server
+        - id: 236055696
+          name: grafana/tempo
+        - id: 46904685
+          name: opentracing/opentracing-go
+        - id: 25459400
+          name: pinpoint-apm/pinpoint
+        - id: 45721011
+          name: apache/skywalking
+        - id: 133340671
+          name: sofastack/sofa-tracer
+        - id: 31788540
+          name: spring-cloud/spring-cloud-sleuth
+        - id: 454341458
+          name: kubeshop/tracetest
+        - id: 4576305
+          name: openzipkin/zipkin
+        - id: 129717717
+          name: grafana/loki
+        - id: 430536935
+          name: loggie-io/loggie
+        - id: 1090311
+          name: elastic/logstash
+        - id: 16554739
+          name: elastic/beats
+        - id: 161628176
+          name: kubeshop/botkube
+        - id: 496143272
+          name: centreon/centreon
+        - id: 171669368
+          name: tribe29/checkmk
+        - id: 448599559
+          name: deepflowys/deepflow
+        - id: 55850689
+          name: open-falcon/falcon-plus
+        - id: 130035428
+          name: foniod/foniod
+        - id: 15111821
+          name: grafana/grafana
+        - id: 385634291
+          name: grafana/mimir
+        - id: 4254338
+          name: graphite-project/graphite-web
+        - id: 222612062
+          name: cilium/hubble
+        - id: 12440855
+          name: Icinga/icinga2
+        - id: 120181748
+          name: kiali/kiali
+        - id: 137922416
+          name: kuberhealthy/kuberhealthy
+        - id: 191676087
+          name: lindb/lindb
+        - id: 61153677
+          name: m3db/m3
+        - id: 16119670
+          name: NagiosEnterprises/nagioscore
+        - id: 10744183
+          name: netdata/netdata
+        - id: 138287889
+          name: Netis/packet-agent
+        - id: 139140778
+          name: NexClipper/NexClipper
+        - id: 244694886
+          name: didi/nightingale
+        - id: 95098170
+          name: OpenObservability/OpenMetrics
+        - id: 865412
+          name: OpenTSDB/opentsdb
+        - id: 316257595
+          name: opstrace/opstrace
+        - id: 243394576
+          name: pixie-io/pixie
+        - id: 252745692
+          name: timescale/promscale
+        - id: 82981995
+          name: sensu/sensu-go
+        - id: 527583905
+          name: runsidekick/sidekick
+        - id: 175833318
+          name: skooner-k8s/skooner
+        - id: 15926180
+          name: draios/sysdig
+        - id: 127344362
+          name: trickstercache/trickster
+        - id: 146327667
+          name: vectordotdev/vector
+        - id: 34659664
+          name: weaveworks/scope
+        - id: 17253775
+          name: zabbix/zabbix

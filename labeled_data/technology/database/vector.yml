@@ -1,6 +1,11 @@
 name: Database - Vector
+name_zh: 向量数据库
 type: Tech-1
 data:
+  labels:
+    - ':companies/chroma/chroma'
+    - ':companies/qdrant/qdrant'
+    - ':companies/weaviate/weaviate'
   platforms:
     - name: GitHub
       type: Code Hosting

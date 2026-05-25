@@ -1,9 +1,0 @@
-name: Buildpacks
-type: Project
-data:
-  platforms:
-    - name: GitHub
-      type: Code Hosting
-      orgs:
-        - id: 35551309
-          name: buildpacks

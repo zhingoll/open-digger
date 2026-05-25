@@ -1,7 +1,10 @@
 name: Uber
+name_zh: 优步
 type: Company
 data:
   labels:
+    - hudi
+    - jaeger
     - openmetadata
   platforms:
     - name: GitHub

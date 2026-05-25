@@ -1,0 +1,11 @@
+name: Karmada
+description: Open, Multi-Cloud, Multi-Cluster Kubernetes Orchestration System
+description_zh: 开源的多云多集群 Kubernetes 编排系统
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 74165798
+          name: karmada-io

@@ -74,11 +74,17 @@ meta:
     - year: 2025
       quarter: 1
       count: 19257589
+    - year: 2025
+      quarter: 2
+      count: 20532032
 data:
   labels:
     - ':companies/blue_spire'
     - ':companies/merico'
     - ':companies/moving_tech_innovations'
+    - ':companies/nammayatri'
+    - ':companies/parseable'
+    - ':companies/zipstack'
     - ':foundations/girlscript'
     - IN-AN
     - IN-AP

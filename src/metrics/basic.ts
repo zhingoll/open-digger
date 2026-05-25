@@ -1,11 +1,12 @@
 import { merge } from 'lodash';
 import { query } from '../db/clickhouse';
-import { getLabelData, PlatformNames, OptionLabelItem, getPlatformData } from '../labelDataUtils';
+import { PlatformNames, OptionLabelItem, getPlatformData } from '../labelDataUtils';
 
 export interface QueryConfig<T = any> {
   labelUnion?: string[];
   labelIntersect?: string[];
-  label?: OptionLabelItem;
+  repoLabel?: OptionLabelItem;
+  userLabel?: OptionLabelItem;
   idOrNames?: {
     platform: PlatformNames;
     repoIds?: number[];
@@ -25,7 +26,7 @@ export interface QueryConfig<T = any> {
   limit: number;
   limitOption: 'each' | 'all';
   precision: number;
-  groupBy?: 'org' | string;
+  groupBy?: 'org' | string | string[];
   groupTimeRange?: 'month' | 'quarter' | 'year';
   injectLabelData?: any[];
   options?: T;
@@ -102,8 +103,8 @@ export const forEveryYearByConfig = async (config: QueryConfig, func: (y: number
 };
 
 export const getWithClause = (config: QueryConfig): string => {
-  if (config.label) {
-    return `WITH ${config.label.withParamClause}`;
+  if (config.repoLabel) {
+    return `WITH ${config.repoLabel.withParamClause}`;
   }
   return '';
 }
@@ -119,19 +120,19 @@ export const getRepoWhereClause = async (config: QueryConfig): Promise<string | 
         // convert repo name to id
         const sql = `SELECT any(repo_id) AS id FROM global_openrank WHERE repo_name IN [${p.repoNames.map(n => `'${n}'`)}] AND platform='${p.platform}' GROUP BY repo_name`;
         const repoIds = (await query<any>(sql, { format: 'JSONEachRow' })).map(r => r.id);
-        repoWhereClauseArray.push(`(repo_id IN [${repoIds.join(',')}] AND platform='${p.platform}')`);
+        repoWhereClauseArray.push(`(events.repo_id IN [${repoIds.join(',')}] AND events.platform='${p.platform}')`);
       }
 
-      if (p.repoIds && p.repoIds.length > 0) repoWhereClauseArray.push(`(repo_id IN [${p.repoIds.join(',')}] AND platform='${p.platform}')`);
+      if (p.repoIds && p.repoIds.length > 0) repoWhereClauseArray.push(`(events.repo_id IN [${p.repoIds.join(',')}] AND events.platform='${p.platform}')`);
 
       if (p.orgNames && p.orgNames.length > 0) {
         // convert org name to id
         const sql = `SELECT any(org_id) AS id FROM global_openrank WHERE org_login IN [${p.orgNames.map(n => `'${n}'`)}] AND platform='${p.platform}' GROUP BY org_login`;
         const orgIds = (await query<any>(sql, { format: 'JSONEachRow' })).map(r => r.id);
-        repoWhereClauseArray.push(`(org_id IN [${orgIds.join(',')}] AND platform='${p.platform}')`);
+        repoWhereClauseArray.push(`(events.org_id IN [${orgIds.join(',')}] AND events.platform='${p.platform}')`);
       }
 
-      if (p.orgIds && p.orgIds.length > 0) repoWhereClauseArray.push(`(org_id IN [${p.orgIds.join(',')}] AND platform='${p.platform}')`);
+      if (p.orgIds && p.orgIds.length > 0) repoWhereClauseArray.push(`(events.org_id IN [${p.orgIds.join(',')}] AND events.platform='${p.platform}')`);
     }
   }
 
@@ -141,8 +142,8 @@ export const getRepoWhereClause = async (config: QueryConfig): Promise<string | 
       const data = getPlatformData([l], config.injectLabelData);
       const arr: string[] = [];
       for (const p of data) {
-        if (p.repos.length > 0) arr.push(`(repo_id IN [${p.repos.map(r => r.id).join(',')}] AND platform='${p.name}')`);
-        if (p.orgs.length > 0) arr.push(`(org_id IN [${p.orgs.map(o => o.id).join(',')}] AND platform='${p.name}')`);
+        if (p.repos.length > 0) arr.push(`(events.repo_id IN [${p.repos.map(r => r.id).join(',')}] AND events.platform='${p.name}')`);
+        if (p.orgs.length > 0) arr.push(`(events.org_id IN [${p.orgs.map(o => o.id).join(',')}] AND events.platform='${p.name}')`);
       }
       if (arr.length === 0) return null;
       return `(${arr.join(' OR ')})`;
@@ -154,13 +155,13 @@ export const getRepoWhereClause = async (config: QueryConfig): Promise<string | 
   if (config.labelUnion) {
     const data = getPlatformData(config.labelUnion, config.injectLabelData);
     for (const p of data) {
-      if (p.repos.length > 0) repoWhereClauseArray.push(`(repo_id IN [${p.repos.map(r => r.id).join(',')}] AND platform='${p.name}')`);
-      if (p.orgs.length > 0) repoWhereClauseArray.push(`(org_id IN [${p.orgs.map(o => o.id).join(',')}] AND platform='${p.name}')`);
+      if (p.repos.length > 0) repoWhereClauseArray.push(`(events.repo_id IN [${p.repos.map(r => r.id).join(',')}] AND events.platform='${p.name}')`);
+      if (p.orgs.length > 0) repoWhereClauseArray.push(`(events.org_id IN [${p.orgs.map(o => o.id).join(',')}] AND events.platform='${p.name}')`);
     }
   }
 
-  if (config.label) {
-    repoWhereClauseArray.push(config.label.whereClause);
+  if (config.repoLabel) {
+    repoWhereClauseArray.push(config.repoLabel.repoWhereClause);
   }
 
   // where clause
@@ -212,8 +213,8 @@ export const getUserWhereClause = async (config: QueryConfig, idCol: string = 'a
     }
   }
 
-  if (config.label) {
-    userWhereClauseArray.push(config.label.whereClause);
+  if (config.userLabel) {
+    userWhereClauseArray.push(config.userLabel.userWhereClause);
   }
 
   // where clause
@@ -226,55 +227,7 @@ export const getUserWhereClause = async (config: QueryConfig, idCol: string = 'a
 };
 
 export const getTimeRangeWhereClause = (config: QueryConfig): string => {
-  return ` created_at >= toDate('${config.startYear}-${config.startMonth}-1') AND created_at < dateAdd(month, 1, toDate('${config.endYear}-${config.endMonth}-1'))`;
-};
-
-// clickhouse label group condition
-export const getLabelGroupConditionClause = (config: QueryConfig): string => {
-  const labelData = getLabelData(config.injectLabelData)?.filter(l => l.type === config.groupBy);
-  if (!labelData || labelData.length === 0) throw new Error(`Invalide group by label: ${config.groupBy}`);
-  const idLabelRepoMap = new Map<string, string[][]>();
-  const idLabelOrgMap = new Map<string, string[][]>();
-  const idLabelUserMap = new Map<string, string[][]>();
-  const addToMap = (map: Map<string, string[][]>, id: string, label: string[]) => {
-    if (!map.has(id)) map.set(id, []);
-    map.get(id)!.push(label);
-  };
-
-  labelData.forEach(l => {
-    l.platforms.forEach(p => {
-      p.repos.forEach(r => addToMap(idLabelRepoMap, `${p.name}_${r.id}`, [l.identifier, l.name]));
-      p.orgs.forEach(o => addToMap(idLabelOrgMap, `${p.name}_${o.id}`, [l.identifier, l.name]));
-      p.users.forEach(u => addToMap(idLabelUserMap, `${p.name}_${u.id}`, [l.identifier, l.name]));
-    });
-  });
-
-  type resultMapType = Map<string, { labels: string[][], platforms: Map<string, { repoIds: number[], orgIds: number[], userIds: number[] }> }>;
-  const resultMap: resultMapType = new Map();
-  const addToResultMap = (id: string, labels: string[][], type: 'repo' | 'org' | 'user') => {
-    const key = labels.map(l => l.join(':')).sort().join(',');
-    if (!resultMap.has(key)) resultMap.set(key, { labels, platforms: new Map<string, { repoIds: number[], orgIds: number[], userIds: number[] }>() });
-    const [platform, entryId] = id.split('_');
-    if (!resultMap.get(key)!.platforms.has(platform)) resultMap.get(key)!.platforms.set(platform, { repoIds: [], orgIds: [], userIds: [] });
-    if (type === 'repo') resultMap.get(key)!.platforms.get(platform)!.repoIds.push(+entryId);
-    else if (type === 'org') resultMap.get(key)!.platforms.get(platform)!.orgIds.push(+entryId);
-    else if (type === 'user') resultMap.get(key)!.platforms.get(platform)!.userIds.push(+entryId);
-  }
-  idLabelRepoMap.forEach((labels, id) => addToResultMap(id, labels, 'repo'));
-  idLabelOrgMap.forEach((labels, id) => addToResultMap(id, labels, 'org'));
-  idLabelUserMap.forEach((labels, id) => addToResultMap(id, labels, 'user'));
-
-  const idConditions = Array.from(resultMap.values()).map(v => {
-    const c: string[] = [];
-    for (const [name, p] of v.platforms) {
-      if (p.repoIds.length > 0) c.push(`(repo_id IN (${p.repoIds.join(',')}) AND platform='${name}')`);
-      if (p.orgIds.length > 0) c.push(`(org_id IN (${p.orgIds.join(',')}) AND platform='${name}')`);
-      if (p.userIds.length > 0) c.push(`(actor_id IN (${p.userIds.join(',')}) AND platform='${name}')`);
-    }
-    return `(${c.join(' OR ')}),[${v.labels.map(l => `tuple('${l[0]}','${l[1]}')`).join(',')}]`;
-  }).join(',');
-
-  return `(arrayJoin(multiIf(${idConditions}, [tuple('Others', 'Others')])) AS items).1 AS id, any(items.2) AS name, COUNT(DISTINCT repo_id) AS repos, COUNT(DISTINCT org_id) AS orgs, COUNT(DISTINCT actor_id) AS developers`;
+  return `events.created_at >= toDate('${config.startYear}-${config.startMonth}-1') AND events.created_at < dateAdd(month, 1, toDate('${config.endYear}-${config.endMonth}-1'))`;
 };
 
 export const getGroupArrayInsertAtClause = (config: QueryConfig, option: { key: string; defaultValue?: string; value?: string; noPrecision?: boolean, positionByEndTime?: boolean }): string => {
@@ -317,16 +270,16 @@ export const getGroupTimeClause = (config: QueryConfig, timeCol: string = 'creat
 
 export const getGroupIdClause = (config: QueryConfig, type: string = 'repo', timeCol?: string) => {
   return `${(() => {
-    const timeColumn = timeCol ?? (config.groupTimeRange ? 'time' : 'created_at');
-    if (!config.groupBy) {  // group by repo'
+    const timeColumn = timeCol ?? (config.groupTimeRange ? 'time' : 'events.created_at');
+    if (!config.groupBy) {  // group by repo
       if (type === 'repo')
-        return `repo_id AS id, platform, argMax(repo_name, ${timeColumn}) AS name`;
+        return `events.repo_id AS id, events.platform, argMax(events.repo_name, ${timeColumn}) AS name`;
       else
-        return `actor_id AS id, platform, argMax(actor_login, ${timeColumn}) AS name`;
+        return `events.actor_id AS id, events.platform, argMax(events.actor_login, ${timeColumn}) AS name`;
     } else if (config.groupBy === 'org') {
-      return `org_id AS id, platform, argMax(org_login, ${timeColumn}) AS name`;
+      return `events.org_id AS id, events.platform, argMax(events.org_login, ${timeColumn}) AS name`;
     } else {  // group by label
-      return getLabelGroupConditionClause(config);
+      return `l.id AS id, 'All' AS platform, any(l.name) AS name, 1 AS repos, 1 AS orgs, 1 AS developers`;
     }
   })()}`;
 };
@@ -341,16 +294,30 @@ export const getOutterOrderAndLimit = (config: QueryConfig, col: string, index?:
   return `${config.order ? `ORDER BY ${config.orderOption === 'latest'
     ? `${col}[-1]${index !== undefined ? `[${index}]` : ''}`
     : `arraySum(${index !== undefined ? `x -> x[${index}],` : ''}${col})`
-    } ${config.order}` : ''}
+    } ${config.order}, id ASC` : ''}
     ${config.limitOption === 'all' && config.limit > 0 ? `LIMIT ${config.limit}` : ''}`;
 };
 
 export const getTopLevelPlatform = (config: QueryConfig, noCount = false) => {
   if (!noCount && (config.groupBy && config.groupBy !== 'org' && config.groupBy !== 'repo')) {
-    return `'All' AS platform, ${getGroupArrayInsertAtClause(config, { key: 'repos' })}, ${getGroupArrayInsertAtClause(config, { key: 'orgs' })}, ${getGroupArrayInsertAtClause(config, { key: 'developers' })}`;
+    return `'All' AS platform`;
   } else {
-    return 'platform, 1 AS repos, 1 AS orgs, 1 AS developers';
+    return 'platform';
   }
+};
+
+export const getLabelJoinClause = (config: QueryConfig, tableName: string = 'events') => {
+  if (config.groupBy && config.groupBy !== 'org' && config.groupBy !== 'repo') {
+    let groupBy: string | string[] = config.groupBy;
+    if (!Array.isArray(groupBy)) {
+      groupBy = [groupBy];
+    }
+    return `INNER JOIN (SELECT id, platform, name, entity_id, entity_type FROM flatten_labels WHERE type IN ('${groupBy.join("','")}')) AS l
+    ON (l.entity_id = ${tableName}.repo_id AND l.entity_type = 'Repo' AND l.platform = ${tableName}.platform)
+    OR (l.entity_id = ${tableName}.org_id AND l.entity_type = 'Org' AND l.platform = ${tableName}.platform)
+    OR (l.entity_id = ${tableName}.actor_id AND l.entity_type = 'User' AND l.platform = ${tableName}.platform)`;
+  }
+  return '';
 };
 
 export const getInnerGroupBy = (config: QueryConfig) => {
@@ -368,7 +335,7 @@ export const filterEnumType = (value: any, types: string[], defautlValue: string
 
 export const processQueryResult = (result: any, customKeys: string[],
   postProcessor?: { [key: string]: (value: any) => any }): any[] => {
-  const keys = ['id', 'platform', 'repos', 'orgs', 'developers', 'name', ...customKeys];
+  const keys = ['id', 'platform', 'name', ...customKeys];
   return result.map((r: any) => {
     const obj: any = {};
     keys.forEach((k, i) => {

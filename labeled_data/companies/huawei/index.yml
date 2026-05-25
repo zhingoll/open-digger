@@ -3,15 +3,21 @@ name_zh: 华为
 type: Company
 data:
   labels:
+    - ascend
+    - cangjie
+    - cann
+    - karmada
     - kubeedge
     - kurator
     - liteos
     - mindspore
     - open_inula
     - openeuler
+    - openfuyao
     - opengauss
     - openharmony
     - service_comb
+    - volcano
   platforms:
     - name: GitHub
       type: Code Hosting

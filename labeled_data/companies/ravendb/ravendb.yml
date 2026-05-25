@@ -1,0 +1,11 @@
+name: RavenDB
+description: Modern ACID NoSQL document database with excellent developer experience.
+description_zh: 现代支持ACID的NoSQL文档数据库，提供卓越的开发者体验。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 213792
+          name: ravendb

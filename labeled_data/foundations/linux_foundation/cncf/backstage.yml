@@ -1,9 +1,0 @@
-name: Backstage
-type: Project
-data:
-  platforms:
-    - name: GitHub
-      type: Code Hosting
-      orgs:
-        - id: 72526453
-          name: backstage

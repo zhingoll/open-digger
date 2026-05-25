@@ -1,6 +1,10 @@
 name: Database - Object Oriented
+name_zh: 面向对象数据库
 type: Tech-1
 data:
+  labels:
+    - ':companies/databricks/neon'
+    - ':companies/naver/cubrid'
   platforms:
     - name: GitHub
       type: Code Hosting
@@ -21,6 +25,8 @@ data:
           name: HydrasDB/hydra
         - id: 1244027
           name: ModeShape/modeshape
+        - id: 1040715058
+          name: Relatude/Relatude.DB
         - id: 150752008
           name: SapphireDb/SapphireDb
         - id: 43494700

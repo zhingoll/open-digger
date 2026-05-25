@@ -1,6 +1,29 @@
 name: Database - Relational
+name_zh: 关系型数据库
 type: Tech-1
 data:
+  labels:
+    - ':companies/amazon/babelfish_for_postgresql'
+    - ':companies/clockwork/spacetimedb'
+    - ':companies/cockroachlabs/cockroachdb'
+    - ':companies/databend/databend'
+    - ':companies/databricks/neon'
+    - ':companies/duckdb/duckdb'
+    - ':companies/huawei/opengauss'
+    - ':companies/imply/druid'
+    - ':companies/linkedin/pinot'
+    - ':companies/mariadb/mariadb'
+    - ':companies/meta/hive'
+    - ':companies/meta/prestodb'
+    - ':companies/meta/velox'
+    - ':companies/naver/cubrid'
+    - ':companies/questdb/questdb'
+    - ':companies/risingwavelabs/risingwave'
+    - ':companies/surrealdb/surrealdb'
+    - ':companies/yandex/clickhouse'
+    - ':companies/yugabyte/yugabytedb'
+    - ':foundations/trino/trino'
+    - ':projects/datafusion'
   platforms:
     - name: GitHub
       type: Code Hosting
@@ -29,6 +52,8 @@ data:
           name: CptTZ/SmallSQL
         - id: 25871447
           name: DaveVoorhis/Rel
+        - id: 1056702615
+          name: DavidLiedle/DriftDB
         - id: 93621710
           name: DeepFound/deep_engine
         - id: 8799170
@@ -37,6 +62,8 @@ data:
           name: Expensify/Bedrock
         - id: 54005538
           name: FirebirdSQL/firebird
+        - id: 1034164151
+          name: Frigatebird-db/frigatebird
         - id: 496817075
           name: GlareDB/glaredb
         - id: 345982729
@@ -61,6 +88,8 @@ data:
           name: OpenTenBase/OpenTenBase
         - id: 41443810
           name: Postgres-XL/Postgres-XL
+        - id: 605546193
+          name: RayforceDB/rayforce
         - id: 74375185
           name: RedBeardLab/rediSQL
         - id: 30113463
@@ -343,6 +372,8 @@ data:
           name: ryenus/hsqldb
         - id: 2529750
           name: sameeragarwal/blinkdb
+        - id: 817507312
+          name: sirius-db/sirius
         - id: 8582237
           name: splicemachine/spliceengine
         - id: 510375115

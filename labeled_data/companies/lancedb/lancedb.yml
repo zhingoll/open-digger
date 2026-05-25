@@ -1,0 +1,11 @@
+name: LanceDB
+description: Modern columnar data format for ML with fast random access and vector search.
+description_zh: 面向机器学习的现代列式数据格式，支持快速随机访问和向量搜索。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 108903835
+          name: LanceDB

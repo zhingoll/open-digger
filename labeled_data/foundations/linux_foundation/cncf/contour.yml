@@ -1,9 +1,0 @@
-name: Contour
-type: Project
-data:
-  platforms:
-    - name: GitHub
-      type: Code Hosting
-      orgs:
-        - id: 54918165
-          name: projectcontour

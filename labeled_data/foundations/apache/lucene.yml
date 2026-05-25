@@ -1,0 +1,17 @@
+name: Apache Lucene
+description: Apache Lucene and Solr open-source search software
+description_zh: Apache Lucene 和 Solr 开源搜索软件
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 341631350
+          name: apache/lucene
+        - id: 50229487
+          name: apache/lucene-solr
+        - id: 215638242
+          name: apache/lucene-site
+        - id: 508622790
+          name: apache/lucene-jira-archive

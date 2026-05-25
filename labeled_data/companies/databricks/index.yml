@@ -1,16 +1,18 @@
 name: Databricks
 type: Company
 data:
+  labels:
+    - delta_lake
+    - mlflow
+    - neon
+    - spark
+    - unity_catalog
   platforms:
     - name: GitHub
       type: Code Hosting
       repos:
-        - id: 17165658
-          name: apache/spark
         - id: 13926404
           name: getredash/redash
       orgs:
         - id: 4998052
           name: databricks
-        - id: 49767398
-          name: delta-io

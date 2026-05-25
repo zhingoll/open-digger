@@ -1,6 +1,21 @@
 name: Database - Document
+name_zh: 文档数据库
 type: Tech-1
 data:
+  labels:
+    - ':companies/apple/foundationdb'
+    - ':companies/chroma/chroma'
+    - ':companies/cratedb/cratedb'
+    - ':companies/elastic/elasticsearch'
+    - ':companies/lancedb/lancedb'
+    - ':companies/linkedin/venice'
+    - ':companies/meta/prestodb'
+    - ':companies/ravendb/ravendb'
+    - ':companies/surrealdb/surrealdb'
+    - ':companies/vespa/vespa'
+    - ':companies/vk/tarantool'
+    - ':companies/yandex/ytsaurus'
+    - ':foundations/apache/lucene'
   platforms:
     - name: GitHub
       type: Code Hosting
@@ -69,6 +84,8 @@ data:
           name: appy-one/acebase
         - id: 2649214
           name: arangodb/arangodb
+        - id: 1085719788
+          name: ashfromsky/yaradb
         - id: 36778364
           name: attic-labs/noms
         - id: 642912355
@@ -133,6 +150,8 @@ data:
           name: goshops-com/StormiDB
         - id: 285669400
           name: graphikDB/graphik
+        - id: 957143813
+          name: hash-anu/AnuDB
         - id: 12050336
           name: hhblaze/DBreeze
         - id: 50836580
@@ -157,6 +176,8 @@ data:
           name: kagisearch/vectordb
         - id: 1776883
           name: kimchy/compass
+        - id: 622856821
+          name: kronotop/kronotop
         - id: 607441698
           name: lancedb/lancedb
         - id: 349172057
@@ -245,6 +266,8 @@ data:
           name: sirixdb/sirix
         - id: 295745510
           name: small-tech/jsdb
+        - id: 1087408719
+          name: sohzm/jasonisnthappy
         - id: 192631273
           name: sourcenetwork/defradb
         - id: 436658287
@@ -265,6 +288,8 @@ data:
           name: tigrisdata/tigris
         - id: 597066476
           name: tontinton/dbeel
+        - id: 922527165
+          name: topk-io/topk
         - id: 86339169
           name: torodb/server
         - id: 184711

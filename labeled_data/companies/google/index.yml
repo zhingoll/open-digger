@@ -1,16 +1,31 @@
 name: Google
+name_zh: 谷歌
 type: Company
 data:
   labels:
+    - a2aproject
+    - adk_python
     - angular
     - bazel
     - beam
+    - coredns
     - dart
     - firebase
     - flutter
     - forseti_security
+    - gemini_cli
     - go
+    - grpc
+    - helm
+    - istio
+    - jax
+    - keras
+    - knative
+    - kubeflow
+    - opentelemetry
+    - openxla
     - tensorflow
+    - vitess
   platforms:
     - name: GitHub
       type: Code Hosting

@@ -74,10 +74,14 @@ meta:
     - year: 2025
       quarter: 1
       count: 400613
+    - year: 2025
+      quarter: 2
+      count: 418244
 data:
   labels:
     - ':companies/nordic_semiconductor'
     - ':companies/opera'
+    - ':companies/vespa'
     - NO-03
     - NO-11
     - NO-15

@@ -1,12 +1,9 @@
 name: KubeEdge
+description: Kubernetes-native edge computing framework by CNCF.
+description_zh: CNCF 旗下的 Kubernetes 原生边缘计算框架。
 type: Project
 data:
   platforms:
-    - name: Gitee
-      type: Code Hosting
-      orgs:
-        - id: 5393926
-          name: LiteOS
     - name: GitHub
       type: Code Hosting
       orgs:

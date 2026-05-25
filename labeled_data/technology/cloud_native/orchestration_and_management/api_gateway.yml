@@ -1,6 +1,10 @@
 name: Cloud Native - Orchestration & Management - API Gateway
 type: Tech-2
 data:
+  labels:
+    - ':companies/ambassadorlabs/emissary_ingress'
+    - ':companies/api7/apisix'
+    - ':companies/kong/kong'
   platforms:
     - name: GitHub
       type: Code Hosting
@@ -9,8 +13,6 @@ data:
           name: 3scale/apicast
         - id: 218068847
           name: apioak/apioak
-        - id: 180481986
-          name: apache/apisix
         - id: 295485450
           name: azure/api-management
         - id: 371564104
@@ -27,8 +29,6 @@ data:
           name: hango-io/hango-gateway
         - id: 558188628
           name: alibaba/higress
-        - id: 26783295
-          name: Kong/kong
         - id: 72875399
           name: luraproject/lura
         - id: 408727871

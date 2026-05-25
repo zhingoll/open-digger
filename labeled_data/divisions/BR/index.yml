@@ -74,8 +74,12 @@ meta:
     - year: 2025
       quarter: 1
       count: 6098724
+    - year: 2025
+      quarter: 2
+      count: 6528548
 data:
   labels:
+    - ':universities/puc_rio'
     - BR-AC
     - BR-AL
     - BR-AM

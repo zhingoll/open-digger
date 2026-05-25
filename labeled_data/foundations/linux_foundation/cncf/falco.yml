@@ -1,9 +1,0 @@
-name: Falco
-type: Project
-data:
-  platforms:
-    - name: GitHub
-      type: Code Hosting
-      orgs:
-        - id: 42391047
-          name: falcosecurity

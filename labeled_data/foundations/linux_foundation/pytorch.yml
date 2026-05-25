@@ -3,3 +3,7 @@ type: Foundation
 data:
   labels:
     - ':companies/meta/pytorch'
+    - ':companies/microsoft/deepspeed'
+    - ':projects/ray'
+    - ':projects/safetensors'
+    - ':projects/vllm'

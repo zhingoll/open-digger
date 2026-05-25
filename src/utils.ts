@@ -1,6 +1,7 @@
 import { createReadStream, existsSync, readFileSync } from 'fs';
 import { load } from 'js-yaml';
 import pWaitFor from 'p-wait-for';
+import { createInterface } from 'readline';
 const dateformat = require('dateformat');
 const CsvReadableStream = require('csv-reader');
 
@@ -65,6 +66,28 @@ export async function readCsvArray(path: string, keys: Array<{ name: string, typ
   return res;
 }
 
+export function readline(filePath: string, onLine: (line: string, index: number) => Promise<void>): Promise<void> {
+  return new Promise(async resolve => {
+    if (!existsSync(filePath)) {
+      return resolve();
+    }
+    const fileStream = createReadStream(filePath);
+
+    const rl = createInterface({
+      input: fileStream,
+      crlfDelay: Infinity,
+    });
+
+    let lineCount = 0;
+    for await (const line of rl) {
+      lineCount++;
+      await onLine(line, lineCount);
+    }
+
+    resolve();
+  });
+}
+
 export async function waitFor(mill: number): Promise<void> {
   return new Promise(resolve => {
     setTimeout(() => {
@@ -113,6 +136,21 @@ export function rankData<T = any>(data: T[], iterArr: any[], getter: (item: T, i
   return result;
 }
 
+/**
+ * Converts an ISO 8601 date string to a database-friendly format ("YYYY-MM-DD HH:MM:SS").
+ *
+ * @param {string} date - The date string in ISO 8601 format (e.g., "2024-06-01T12:34:56Z").
+ * @returns {string} The formatted date string ("YYYY-MM-DD HH:MM:SS").
+ *
+ * @example
+ * // returns "2024-06-01 12:34:56"
+ * formatDate("2024-06-01T12:34:56Z");
+ * formatDate("2024-06-01T12:34:56.213Z");
+ */
+export const formatDate = (date: string) => {
+  return date.replace('T', ' ').replace('Z', '').slice(0, 19);
+};
+
 export const getLogger = (tag: string) => {
   const log = (level: string, ...args: any[]) =>
     console.log(`${dateformat(new Date(), 'yyyy-mm-dd HH:MM:ss')} ${level} [${tag}]`, ...args);
@@ -122,6 +160,41 @@ export const getLogger = (tag: string) => {
     error: (...args: any[]) => log('ERROR', ...args),
   };
 };
+
+/**
+ * Executes an array of asynchronous task functions with a specified concurrency limit.
+ *
+ * @param {Array<() => Promise<any>>} tasks - An array of functions, each returning a Promise. Each function represents an asynchronous task to execute.
+ * @param {number} concurrencyLimit - The maximum number of tasks to execute concurrently.
+ * @returns {Promise<any[]>} A promise that resolves to an array of results from the tasks, in the order they were started.
+ *
+ * Important behavior:
+ * - If any task throws or rejects, the error will propagate and reject the returned promise.
+ * - Results are collected in the order tasks are started, not necessarily the order they complete.
+ */
+export async function runTasks(tasks: Array<() => Promise<any>>, concurrencyLimit: number): Promise<any[]> {
+  const results: any[] = [];
+  const executing = new Set();
+
+  for (const task of tasks) {
+    if (executing.size >= concurrencyLimit) {
+      await Promise.race(executing);
+    }
+
+    const promise = task().then(result => {
+      executing.delete(promise);
+      results.push(result);
+    }).catch(error => {
+      executing.delete(promise);
+      throw error;
+    });
+
+    executing.add(promise);
+  }
+
+  await Promise.all(executing);
+  return results;
+}
 
 export class ArrayMap<T> {
   private array: T[];

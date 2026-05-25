@@ -1,0 +1,11 @@
+name: Linkerd
+description: Ultralight, security-first service mesh for Kubernetes.
+description_zh: 专为 Kubernetes 设计的超轻量、安全优先的服务网格。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 25301026
+          name: linkerd

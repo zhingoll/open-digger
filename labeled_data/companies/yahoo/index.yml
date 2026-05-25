@@ -1,0 +1,12 @@
+name: Yahoo
+type: Company
+data:
+  labels:
+    - pulsar
+    - trafficserver
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 16574
+          name: yahoo

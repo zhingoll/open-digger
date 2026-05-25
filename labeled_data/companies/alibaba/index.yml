@@ -3,6 +3,7 @@ name_zh: 阿里巴巴
 type: Company
 data:
   labels:
+    - agent_scope
     - alios_things
     - anolis
     - arthas
@@ -29,18 +30,22 @@ data:
     - mars
     - midway
     - modelscope
+    - ms_swift
     - nacos
     - noslate
     - ocm
     - open_messaging
     - openkraken
     - openkruise
+    - opensandbox
     - opensergo
     - opensumi
     - openyurt
+    - page_agent
     - paimon
     - polardb-pg
     - polardb-x
+    - qwen_code
     - rocketmq
     - sca
     - sealer

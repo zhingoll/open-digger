@@ -29,8 +29,8 @@ export async function queryStream<T = any>(q: string, onRow: (row: T) => void, o
       stream.on('error', (err: any) => console.error(`Query for ${q} error: ${err}`));
     } catch (e) {
       console.error(`Caught error ${e} while query: ${q}`);
+      resolve();
     }
-
   });
 }
 
@@ -42,7 +42,7 @@ export async function insertRecords(records: any[], table: string) {
       //
     },
   });
-  for (const e of records) stream.push(e);
+  for (const e of records) if (e) stream.push(e);
   stream.push(null);
   const client = createClient((await getConfig()).db.clickhouse);
   await client.insert({

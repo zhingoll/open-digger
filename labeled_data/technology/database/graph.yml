@@ -1,6 +1,11 @@
 name: Database - Graph
+name_zh: 图数据库
 type: Tech-1
 data:
+  labels:
+    - ':companies/neo4j/neo4j'
+    - ':companies/surrealdb/surrealdb'
+    - ':foundations/linux_foundation/lfai/janusgraph'
   platforms:
     - name: GitHub
       type: Code Hosting
@@ -15,12 +20,16 @@ data:
           name: HelixDB/helix-db
         - id: 77385607
           name: JanusGraph/janusgraph
+        - id: 1071734040
+          name: LadybugDB/ladybug
         - id: 92834468
           name: Pometry/Raphtory
         - id: 45098765
           name: PureSolTechnologies/DuctileDB
         - id: 84458512
           name: RedisGraph/RedisGraph
+        - id: 1040715058
+          name: Relatude/Relatude.DB
         - id: 43494700
           name: SparsityTechnologies/sparksee-server
         - id: 528766495
@@ -79,6 +88,8 @@ data:
           name: neo4j/neo4j
         - id: 7083240
           name: orientechnologies/orientdb
+        - id: 1111263109
+          name: orneryd/NornicDB
         - id: 26917250
           name: pkumod/gStore
         - id: 166387176
@@ -89,6 +100,8 @@ data:
           name: ragedb/ragedb
         - id: 73235061
           name: rayokota/hgraphdb
+        - id: 1051002990
+          name: sanonone/kektordb
         - id: 743502
           name: sones/sones
         - id: 55578752

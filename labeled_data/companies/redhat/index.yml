@@ -1,13 +1,26 @@
 name: RedHat
+name_zh: 红帽
 type: Company
 data:
   labels:
+    - ':companies/microsoft/keda'
     - ceph
+    - container_network_interface
+    - cri_o
+    - debezium
+    - etcd
+    - kubevirt
+    - metal3
     - openshift
+    - operator_framework
+    - ramalama
     - stackrox
+    - strimzi
   platforms:
     - name: GitHub
       type: Code Hosting
       orgs:
         - id: 33972111
           name: RedHatOfficial
+        - id: 5874934
+          name: containers

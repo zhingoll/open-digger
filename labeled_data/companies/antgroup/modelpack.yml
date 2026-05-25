@@ -1,0 +1,11 @@
+name: ModelPack
+description: A CLI tool for managing OCI model artifacts based on Model Spec.
+description_zh: 基于Model Spec管理OCI模型组件的命令行工具。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 210873461
+          name: modelpack

@@ -75,11 +75,16 @@ meta:
     - year: 2025
       quarter: 1
       count: 3153280
+    - year: 2025
+      quarter: 2
+      count: 3327893
 data:
   labels:
+    - ':companies/kestra'
     - ':companies/material_ui_sas'
     - ':companies/matra_datavision'
     - ':companies/sensiolabs'
+    - ':companies/zama'
     - FR-20R
     - FR-971
     - FR-972

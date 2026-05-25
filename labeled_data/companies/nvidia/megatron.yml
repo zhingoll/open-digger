@@ -1,0 +1,13 @@
+name: Megatron
+description: GPU-optimized library for training transformer models at scale
+description_zh: 用于大规模训练Transformer模型的GPU优化库
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 176982014
+          name: NVIDIA/Megatron-LM
+        - id: 771082158
+          name: NVIDIA/Megatron-Energon

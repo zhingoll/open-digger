@@ -1,0 +1,11 @@
+name: Safetensors
+description: Simple, safe way to store and distribute tensors
+description_zh: 简单、安全的方式存储和分发张量
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 274251326
+          name: safetensors

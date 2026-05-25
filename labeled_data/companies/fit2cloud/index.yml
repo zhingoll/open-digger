@@ -8,4 +8,5 @@ data:
     - halo
     - jumpserver
     - kubeoperator
+    - maxkb
     - metersphere

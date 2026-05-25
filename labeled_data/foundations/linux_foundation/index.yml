@@ -1,7 +1,10 @@
 name: Linux Foundation
+name_zh: Linux 基金会
 type: Foundation
 data:
   labels:
+    - ':companies/google/a2aproject'
+    - ':companies/meta/spring_projects'
     - sonic
     - valkey
     - zephyr

@@ -1,0 +1,11 @@
+name: AIlice
+description: AIlice is a fully autonomous, general-purpose AI agent.
+description_zh: AIlice 是一个完全自主的通用人工智能代理。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 705433491
+          name: myshell-ai/AIlice

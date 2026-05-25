@@ -2,7 +2,10 @@ name: LinkedIn
 type: Company
 data:
   labels:
+    - datahub
     - kafka
+    - pinot
+    - venice
   platforms:
     - name: GitHub
       type: Code Hosting

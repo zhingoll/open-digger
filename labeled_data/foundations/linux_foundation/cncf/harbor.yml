@@ -1,9 +1,0 @@
-name: Harbor
-type: Project
-data:
-  platforms:
-    - name: GitHub
-      type: Code Hosting
-      orgs:
-        - id: 40275816
-          name: goharbor

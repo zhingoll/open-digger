@@ -1,6 +1,12 @@
 name: Database - Search Engine
+name_zh: 搜索引擎
 type: Tech-1
 data:
+  labels:
+    - ':companies/amazon/opensearch'
+    - ':companies/elastic/elasticsearch'
+    - ':companies/vespa/vespa'
+    - ':foundations/apache/lucene'
   platforms:
     - name: GitHub
       type: Code Hosting

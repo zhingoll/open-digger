@@ -1,9 +1,0 @@
-name: OpenKruise
-type: Project
-data:
-  platforms:
-    - name: GitHub
-      type: Code Hosting
-      orgs:
-        - id: 49735278
-          name: openkruise

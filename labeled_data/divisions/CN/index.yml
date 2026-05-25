@@ -76,6 +76,9 @@ meta:
     - year: 2025
       quarter: 1
       count: 14392642
+    - year: 2025
+      quarter: 2
+      count: 14933687
 data:
   labels:
     - ':communities/kaiyuanshe'
@@ -111,9 +114,11 @@ data:
     - ':companies/gaas'
     - ':companies/galaxy_future'
     - ':companies/goodrain'
+    - ':companies/gpustack'
     - ':companies/greatdb'
     - ':companies/guojusoft'
     - ':companies/huawei'
+    - ':companies/iflytek'
     - ':companies/inspur'
     - ':companies/iqiyi'
     - ':companies/jd'
@@ -127,6 +132,7 @@ data:
     - ':companies/matrix_origin'
     - ':companies/megvii'
     - ':companies/meituan'
+    - ':companies/moonshot'
     - ':companies/netease'
     - ':companies/oneflow'
     - ':companies/openkylin'
@@ -152,7 +158,9 @@ data:
     - ':companies/vesoft'
     - ':companies/vipshop'
     - ':companies/webank'
+    - ':companies/whaleops'
     - ':companies/xiaomi'
+    - ':companies/xorbits'
     - ':companies/youzan'
     - ':companies/yunion'
     - ':companies/zilliz'

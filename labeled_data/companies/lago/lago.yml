@@ -1,0 +1,11 @@
+name: Lago
+description: Open-source billing system for usage-based and subscription-based pricing.
+description_zh: 开源的用量计费和订阅计费系统。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 75492405
+          name: getlago

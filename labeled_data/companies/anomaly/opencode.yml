@@ -1,0 +1,11 @@
+name: OpenCode
+description: The open source AI coding agent.
+description_zh: 开源的AI编程代理。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 975734319
+          name: anomalyco/opencode

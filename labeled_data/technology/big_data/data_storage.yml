@@ -1,22 +1,20 @@
 name: Big Data - Data Storage
+name_zh: 数据存储
 type: Tech-1
 data:
+  labels:
+    - ':companies/databricks/delta_lake'
+    - ':companies/juicedata/juicefs'
+    - ':companies/netflix/iceberg'
+    - ':companies/uber/hudi'
   platforms:
     - name: GitHub
       type: Code Hosting
       repos:
-        - id: 327859577
-          name: juicedata/juicefs
-        - id: 76474200
-          name: apache/hudi
-        - id: 158256479
-          name: apache/iceberg
         - id: 7276954
           name: Alluxio/alluxio
         - id: 206459
           name: apache/avro
-        - id: 182849188
-          name: delta-io/delta
         - id: 3786237
           name: hazelcast/hazelcast
         - id: 20675636

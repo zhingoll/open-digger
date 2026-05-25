@@ -75,13 +75,20 @@ meta:
     - year: 2025
       quarter: 1
       count: 4465829
+    - year: 2025
+      quarter: 2
+      count: 4684240
 data:
   labels:
     - ':agencies/moj_uk'
     - ':companies/deepmind'
     - ':companies/gaas'
+    - ':companies/improbable'
+    - ':companies/questdb'
     - ':companies/rare'
     - ':companies/raycast'
+    - ':companies/surrealdb'
+    - ':companies/weaveworks'
     - GB-ENG
     - GB-NIR
     - GB-SCT

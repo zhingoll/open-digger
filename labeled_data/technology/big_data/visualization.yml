@@ -1,6 +1,10 @@
 name: Big Data - Visualization
+name_zh: 数据可视化
 type: Tech-1
 data:
+  labels:
+    - ':companies/metabase/metabase'
+    - ':projects/matplotlib'
   platforms:
     - name: GitHub
       type: Code Hosting
@@ -13,12 +17,8 @@ data:
           name: grafana/grafana
         - id: 39464018
           name: apache/superset
-        - id: 30203935
-          name: metabase/metabase
         - id: 13926404
           name: getredash/redash
-        - id: 1385122
-          name: matplotlib/matplotlib
         - id: 85095608
           name: airbnb/visx
         - id: 45646037

@@ -1,0 +1,11 @@
+name: Container Network Interface (CNI)
+description: CNI networking plugins maintained by the CNI team.
+description_zh: 由 CNI 团队维护的容器网络插件。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 18357459
+          name: containernetworking

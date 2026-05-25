@@ -1,9 +1,0 @@
-name: The Update Framework (TUF)
-type: Project
-data:
-  platforms:
-    - name: GitHub
-      type: Code Hosting
-      orgs:
-        - id: 4633028
-          name: theupdateframework

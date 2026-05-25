@@ -98,7 +98,7 @@ LEFT JOIN
     province_matched.id AS province_id,
     COALESCE(province_matched.name, '') AS province,
     COALESCE(province_matched.name_zh, '') AS province_zh,
-    li.administrative_area_level_2 AS city
+    if(li.country IN ['Macao', 'Hong Kong', 'Taiwan', 'Hong Kong SAR', 'Macao SAR'], li.administrative_area_level_1, li.administrative_area_level_2) AS city
   FROM location_info li
   LEFT JOIN country_labels country_matched ON country_matched.includes_lower = lower(original_country)
   LEFT JOIN province_labels province_matched ON province_matched.parent_country_id = country_matched.id AND original_province !='' AND province_matched.includes_lower = lower(original_province)
@@ -164,11 +164,14 @@ GROUP BY actor_id, platform
     await query(`DROP TABLE IF EXISTS flatten_labels`);
     const createViewQuery = `
 CREATE MATERIALIZED VIEW IF NOT EXISTS flatten_labels
+REFRESH EVERY 1 DAY
 (
   id LowCardinality(String),
   type LowCardinality(String),
   name LowCardinality(String),
   name_zh LowCardinality(String),
+  description String,
+  description_zh String,
   platform LowCardinality(String),
   entity_id UInt64,
   entity_type Enum8('Repo'=1, 'Org'=2, 'User'=3)
@@ -177,12 +180,12 @@ ENGINE = MergeTree()
 ORDER BY (id, platform)
 POPULATE
 AS
-WITH l AS (SELECT id, type, name, name_zh, p.name AS platform, p.repos AS repos, p.orgs AS orgs, p.users AS users FROM labels ARRAY JOIN platforms AS p)
-SELECT id, type, name, name_zh, platform, arrayJoin(repos) AS entity_id, 'Repo' AS entity_type FROM l
+WITH l AS (SELECT id, type, name, name_zh, description, description_zh, p.name AS platform, p.repos AS repos, p.orgs AS orgs, p.users AS users FROM labels ARRAY JOIN platforms AS p)
+SELECT id, type, name, name_zh, description, description_zh, platform, arrayJoin(repos) AS entity_id, 'Repo' AS entity_type FROM l
 UNION ALL
-SELECT id, type, name, name_zh, platform, arrayJoin(orgs) AS entity_id, 'Org' AS entity_type FROM l
+SELECT id, type, name, name_zh, description, description_zh, platform, arrayJoin(orgs) AS entity_id, 'Org' AS entity_type FROM l
 UNION ALL
-SELECT id, type, name, name_zh, platform, arrayJoin(users) AS entity_id, 'User' AS entity_type FROM l
+SELECT id, type, name, name_zh, description, description_zh, platform, arrayJoin(users) AS entity_id, 'User' AS entity_type FROM l
 `;
     await query(createViewQuery);
   };
@@ -205,9 +208,109 @@ SELECT
   issue_id AS id,
   platform
 FROM events WHERE type = 'PullRequestEvent' AND action = 'opened' AND actor_login NOT LIKE '%[bot]%'
+AND (platform, actor_id) NOT IN (SELECT platform, entity_id FROM flatten_labels WHERE id = ':bot' AND entity_type = 'User')
+AND toYear(created_at) >= 2025
 AND (((platform, repo_id) IN (SELECT platform, entity_id FROM flatten_labels WHERE entity_type = 'Repo'))
    OR ((platform, org_id) IN (SELECT platform, entity_id FROM flatten_labels WHERE entity_type = 'Org')))
-GROUP BY issue_id, platform
+GROUP BY id, platform
+`;
+    await query(createViewQuery);
+  };
+
+  const createIssuesWithLabelView = async () => {
+    // The issues_with_label view is used to store the issues with label info for the issues
+    // The issues_with_label view is refreshed every 1 hour
+    await query(`DROP TABLE IF EXISTS issues_with_label`);
+    const createViewQuery = `
+CREATE MATERIALIZED VIEW IF NOT EXISTS issues_with_label
+REFRESH EVERY 1 HOUR
+(
+  id UInt64,
+  platform LowCardinality(String),
+  repo_name LowCardinality(String),
+  issue_number UInt64,
+  issue_title String,
+  body String
+) ENGINE = MergeTree()
+ORDER BY (id, platform)
+POPULATE
+AS
+SELECT
+  issue_id AS id,
+  platform,
+  argMax(repo_name, created_at) AS repo_name,
+  argMax(issue_number, created_at) AS issue_number,
+  argMax(issue_title, created_at) AS issue_title,
+  argMax(body, created_at) AS body
+FROM events WHERE type = 'IssuesEvent' AND action = 'opened'
+AND toYear(created_at) >= 2025
+AND (((platform, repo_id) IN (SELECT platform, entity_id FROM flatten_labels WHERE entity_type = 'Repo'))
+   OR ((platform, org_id) IN (SELECT platform, entity_id FROM flatten_labels WHERE entity_type = 'Org')))
+GROUP BY id, platform
+`;
+    await query(createViewQuery);
+  };
+
+  const createLabelHierarchyView = async () => {
+    await query(`DROP TABLE IF EXISTS label_hierarchy`);
+    const createViewQuery = `
+CREATE MATERIALIZED VIEW IF NOT EXISTS label_hierarchy
+REFRESH EVERY 1 DAY
+(
+  id String,
+  type LowCardinality(String),
+  name String,
+  name_zh String,
+  description String,
+  description_zh String,
+  parent_id LowCardinality(String),
+  parent_type LowCardinality(String),
+  parent_name String,
+  parent_name_zh String,
+  level UInt8
+)
+ENGINE = MergeTree()
+ORDER BY (id, type)
+POPULATE
+AS
+WITH RECURSIVE project_hierarchy AS (
+    SELECT 
+        id,
+        type,
+        name,
+        name_zh,
+        children,
+        CAST([], 'Array(String)') AS parent_ids,
+        0 AS level
+    FROM labels
+    UNION ALL
+    SELECT 
+        p.id,
+        p.type,
+        p.name,
+        p.name_zh,
+        p.children,
+        arrayConcat(ph.parent_ids, [ph.id]) AS parent_ids,
+        ph.level + 1 AS level
+    FROM labels p
+    JOIN project_hierarchy ph ON has(p.children, ph.id)
+)
+SELECT 
+    p.id AS id,
+    any(p.type) AS type,
+    any(p.name) AS name,
+    any(p.name_zh) AS name_zh,
+    any(p.description) AS description,
+    any(p.description_zh) AS description_zh,
+    h.id AS parent_id,
+    any(h.type) AS parent_type,
+    any(h.name) AS parent_name,
+    any(h.name_zh) AS parent_name_zh,
+    any(h.level) AS level
+FROM labels p
+JOIN project_hierarchy h ON has(h.parent_ids, p.id) OR h.id = p.id
+WHERE p.id != h.id
+GROUP BY id, parent_id
 `;
     await query(createViewQuery);
   };
@@ -216,4 +319,6 @@ GROUP BY issue_id, platform
   await createNameView();
   await createFlattenLabelView();
   await createPullsWitLabelView();
+  await createIssuesWithLabelView();
+  await createLabelHierarchyView();
 })();

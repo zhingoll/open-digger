@@ -1,0 +1,13 @@
+name: FLUX models
+description: Official inference repository for FLUX models with support for image generation and editing.
+description_zh: FLUX 模型的官方推理仓库，支持图像生成与编辑。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 836642963
+          name: black-forest-labs/flux
+        - id: 1103476826
+          name: black-forest-labs/flux2

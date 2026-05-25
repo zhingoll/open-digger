@@ -1,0 +1,14 @@
+name: Snowflake
+type: Company
+data:
+  labels:
+    - polaris
+    - streamlit
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 6453780
+          name: snowflakedb
+        - id: 58992620
+          name: snowflake-labs

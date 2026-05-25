@@ -74,9 +74,14 @@ meta:
     - year: 2025
       quarter: 1
       count: 1524913
+    - year: 2025
+      quarter: 2
+      count: 1629902
 data:
   labels:
     - ':companies/cloudwise'
+    - ':companies/databend'
+    - ':companies/hpc_ai'
     - SG-01
     - SG-02
     - SG-03

@@ -1,0 +1,11 @@
+name: Nordcraft
+description: Internal packages used by the toddle open-source visual frontend framework.
+description_zh: toddle 开源可视化前端框架内部使用的包。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 122045331
+          name: nordcraftengine

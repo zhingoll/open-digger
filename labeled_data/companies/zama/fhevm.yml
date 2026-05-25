@@ -1,0 +1,11 @@
+name: FHEVM
+description: 'FHEVM: A full-stack framework integrating FHE with blockchain apps'
+description_zh: FHEVM：一个将全同态加密与区块链应用集成的全栈框架
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 976568879
+          name: zama-ai/fhevm

@@ -39,6 +39,16 @@ let config = {
     appPrivateKeyPath: '',
     appId: 0,
   },
+  gitlab: {
+    token: '',
+    apiUrl: '',
+    graphqlApiUrl: '',
+    /** GraphQL 请求超时时间（毫秒），默认 120 秒，用于避免频繁 timeout */
+    graphqlTimeout: 120000,
+  },
+  atomgit: {
+    dataPath: '',
+  },
   google: {
     map: {
       key: '',

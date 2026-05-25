@@ -1,0 +1,11 @@
+name: Envoy
+description: Cloud-native high-performance edge/middle/service proxy
+description_zh: 面向边缘/中间/服务层的云原生高性能代理
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      orgs:
+        - id: 30125649
+          name: envoyproxy

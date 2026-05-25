@@ -1,0 +1,6 @@
+name: Rust Foundation
+name_zh: Rust 基金会
+type: Foundation
+data:
+  labels:
+    - ':companies/mozilla/rust'

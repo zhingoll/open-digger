@@ -1,0 +1,11 @@
+name: FrostDB
+description: FrostDB is an embeddable columnar database in Go, optimized for write-heavy and analytical workloads.
+description_zh: FrostDB 是一个用 Go 编写的嵌入式列数据库，适用于写入密集型和分析型工作负载。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 473235285
+          name: polarsignals/frostdb

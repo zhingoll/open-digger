@@ -1,0 +1,11 @@
+name: Phoenix
+description: Phoenix is an open-source AI observability & evaluation platform.
+description_zh: Phoenix 是一个开源的人工智能可观测性与评估平台。
+type: Project
+data:
+  platforms:
+    - name: GitHub
+      type: Code Hosting
+      repos:
+        - id: 564072810
+          name: Arize-ai/phoenix

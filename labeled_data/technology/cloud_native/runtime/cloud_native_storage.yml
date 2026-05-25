@@ -1,6 +1,12 @@
 name: Cloud Native - Runtime - Cloud Native Storage
 type: Tech-2
 data:
+  labels:
+    - ':companies/jd/cubefs'
+    - ':companies/juicedata/juicefs'
+    - ':companies/quantum/rook'
+    - ':companies/rancher/longhorn'
+    - ':companies/redhat/ceph'
   platforms:
     - name: GitHub
       type: Code Hosting
@@ -9,26 +15,18 @@ data:
           name: alluxio/alluxio
         - id: 397563881
           name: carina-io/carina
-        - id: 2310495
-          name: ceph/ceph
         - id: 91765224
           name: container-storage-interface/spec
-        - id: 171396748
-          name: cubeFS/cubefs
         - id: 276365255
           name: opencurve/curve
         - id: 1377037
           name: gluster/glusterfs
         - id: 466948543
           name: hwameistor/hwameistor
-        - id: 327859577
-          name: juicedata/juicefs
         - id: 166203864
           name: k8up-io/k8up
         - id: 117251051
           name: LINBIT/linstor-server
-        - id: 88298561
-          name: longhorn/longhorn
         - id: 29261473
           name: minio/minio
         - id: 50505775
@@ -41,8 +39,6 @@ data:
           name: oras-project/oras
         - id: 226072757
           name: piraeusdatastore/piraeus
-        - id: 62921553
-          name: rook/rook
         - id: 77096333
           name: sodafoundation/api
         - id: 790019

@@ -74,8 +74,16 @@ meta:
     - year: 2025
       quarter: 1
       count: 720587
+    - year: 2025
+      quarter: 2
+      count: 758265
 data:
   labels:
+    - ':companies/armo'
+    - ':companies/cyberark'
+    - ':companies/dragonflydb'
+    - ':companies/ravendb'
+    - ':companies/scylladb'
     - IL-D
     - IL-HA
     - IL-JM
