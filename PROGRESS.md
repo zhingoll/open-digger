@@ -6,4 +6,5 @@
 5. Remotes：origin=zhingoll/open-digger；upstream=X-lab2017/open-digger（严格只读）。
 6. 任务0完成：Docker Desktop 4.83.0 running，client/server 29.6.2，`hello-world` 成功。
 7. 任务1完成：先红（缺 GitHubAdapter）后绿；GitHub/HF Adapter、v1校验、脱敏与跨平台入口共16 passing。
-8. 任务2完成：HTTP/Gateway 24 passing；故意状态码红21/1后还原；Docker真实ClickHouse 4 passing并down -v；循环2/16，进入MCP。
+8. 任务2完成：HTTP/Gateway 24 passing；故意状态码红21/1后还原；Docker ClickHouse 4 passing并down -v。
+9. 任务3完成：官方MCP SDK 1.22.0，真实stdio客户端29 passing；循环3/16，进入统一Skill。
