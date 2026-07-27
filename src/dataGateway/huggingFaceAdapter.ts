@@ -39,14 +39,14 @@ interface DatasetRow {
 }
 interface MetricSeedRow {
   internal_id: string;
-  downloads: number | null;
-  likes: number | null;
-  downloads_all_time: number | null;
+  downloads: number | string | null;
+  likes: number | string | null;
+  downloads_all_time: number | string | null;
   updated_at: string;
 }
 interface HistoryRow {
-  download_count: number;
-  like_count: number;
+  download_count: number | string;
+  like_count: number | string;
   crawl_time: string;
 }
 
@@ -205,17 +205,17 @@ ORDER BY crawl_time ASC`, { internalId: seed.internal_id });
     const observedAt = latest?.crawl_time ?? seedUpdatedAt;
     const metrics: Record<string, MetricValue> = {
       'huggingface.downloads': {
-        value: seed.downloads,
+        value: this.numeric(seed.downloads),
         unit: 'downloads',
         observed_at: seedUpdatedAt,
       },
       'huggingface.likes': {
-        value: seed.likes,
+        value: this.numeric(seed.likes),
         unit: 'likes',
         observed_at: seedUpdatedAt,
       },
       'huggingface.downloads_all_time': {
-        value: seed.downloads_all_time,
+        value: this.numeric(seed.downloads_all_time),
         unit: 'downloads',
         observed_at: observedAt,
       },
@@ -227,13 +227,13 @@ ORDER BY crawl_time ASC`, { internalId: seed.internal_id });
     };
     if (latest) {
       metrics['huggingface.downloads_history'] = {
-        value: latest.download_count,
+        value: this.numeric(latest.download_count),
         unit: 'downloads',
         observed_at: latest.crawl_time,
         series: this.series(history, 'download_count'),
       };
       metrics['huggingface.likes_history'] = {
-        value: latest.like_count,
+        value: this.numeric(latest.like_count),
         unit: 'likes',
         observed_at: latest.crawl_time,
         series: this.series(history, 'like_count'),
@@ -307,7 +307,7 @@ LIMIT {limit:UInt32}`, { query, limit });
   }
 
   private series(history: HistoryRow[], key: 'download_count' | 'like_count'): MetricSeriesPoint[] {
-    return history.map(row => ({ time: row.crawl_time, value: row[key] }));
+    return history.map(row => ({ time: row.crawl_time, value: this.numeric(row[key]) }));
   }
 
   private normalizeHistory(history: HistoryRow[]): HistoryRow[] {
@@ -317,5 +317,12 @@ LIMIT {limit:UInt32}`, { query, limit });
       byTime.set(crawlTime, { ...row, crawl_time: crawlTime });
     });
     return Array.from(byTime.values()).sort((left, right) => left.crawl_time.localeCompare(right.crawl_time));
+  }
+
+  private numeric(value: number | string | null): number | null {
+    if (value === null) return null;
+    const number = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(number)) throw new Error('Data source returned a non-numeric metric');
+    return number;
   }
 }

@@ -17,7 +17,8 @@
     "test": "CLICKHOUSE_URL=http://ci.open-digger.cn:8123 CLICKHOUSE_USERNAME=default CLICKHOUSE_PASSWORD= mocha",
     "import-label-to-database": "npm run build && node lib/scripts/importLabelToDatabase.js",
     "build:data-gateway-tests": "tsc -p test/tsconfig.dataGateway.json",
-    "test:data-gateway": "npm run build:data-gateway-tests && mocha \".data-gateway-test-dist/test/dataGateway*.test.js\" --reporter spec"
+    "test:data-gateway": "npm run build:data-gateway-tests && mocha \".data-gateway-test-dist/test/dataGateway*.test.js\" --reporter spec",
+    "test:data-gateway:clickhouse": "npm run build:data-gateway-tests && node .data-gateway-test-dist/src/dataGateway/integrationTestRunner.js"
   },
   "repository": {
     "type": "git",

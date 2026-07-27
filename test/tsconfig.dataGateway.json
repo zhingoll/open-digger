@@ -9,7 +9,8 @@
   },
   "include": [
     "../src/dataGateway/**/*.ts",
-    "./dataGateway*.test.ts"
+    "./dataGateway*.test.ts",
+    "./dataGateway*.integration.ts"
   ],
   "exclude": []
 }

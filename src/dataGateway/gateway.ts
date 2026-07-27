@@ -1,4 +1,5 @@
 import { DataAdapter } from './adapter';
+import { DataGatewayError } from './errors';
 import {
   DATA_GATEWAY_SCHEMA_VERSION,
   DataSource,
@@ -26,9 +27,12 @@ export interface GatewaySearchOptions {
 export class DataGateway {
   private readonly adapters = new Map<DataSource, DataAdapter>();
   private readonly now: () => Date;
+  private readonly adapterTimeoutMs: number;
 
-  constructor(adapters: DataAdapter[], now: () => Date = () => new Date()) {
+  constructor(adapters: DataAdapter[], now: () => Date = () => new Date(), adapterTimeoutMs = 5000) {
     this.now = now;
+    if (!Number.isFinite(adapterTimeoutMs) || adapterTimeoutMs < 1) throw new Error('Adapter timeout must be positive');
+    this.adapterTimeoutMs = adapterTimeoutMs;
     for (const adapter of adapters) {
       if (this.adapters.has(adapter.source)) {
         throw new Error(`Duplicate data adapter for source: ${adapter.source}`);
@@ -47,20 +51,20 @@ export class DataGateway {
 
   async search(query: string, options: GatewaySearchOptions = {}): Promise<SearchResponse> {
     const normalizedQuery = query.trim();
-    if (!normalizedQuery) throw new Error('Search query must not be empty');
-    if (normalizedQuery.length > MAX_SEARCH_QUERY_LENGTH) throw new Error('Search query is too long');
+    if (!normalizedQuery) throw new DataGatewayError('invalid_request', 'Search query must not be empty', 400);
+    if (normalizedQuery.length > MAX_SEARCH_QUERY_LENGTH) throw new DataGatewayError('invalid_request', 'Search query is too long', 400);
 
     const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
     if (!Number.isInteger(limit) || limit < 1 || limit > MAX_SEARCH_LIMIT) {
-      throw new Error(`Search limit must be an integer between 1 and ${MAX_SEARCH_LIMIT}`);
+      throw new DataGatewayError('invalid_request', `Search limit must be an integer between 1 and ${MAX_SEARCH_LIMIT}`, 400);
     }
     this.validateEntityTypes(options.entity_types);
     const adapters = this.selectAdapters(options.sources);
     const settled = await Promise.allSettled(
-      adapters.map(adapter => adapter.search(normalizedQuery, {
+      adapters.map(adapter => this.withTimeout(adapter.search(normalizedQuery, {
         entity_types: options.entity_types,
         limit,
-      })),
+      }))),
     );
     const data: SearchResult[] = [];
     const warnings: string[] = [];
@@ -88,11 +92,11 @@ export class DataGateway {
 
   async getEntity(source: DataSource, locator: EntityLocator): Promise<EntityResponse | null> {
     const adapter = this.adapters.get(source);
-    if (!adapter) throw new Error(`Unsupported data source: ${source}`);
+    if (!adapter) throw new DataGatewayError('invalid_request', `Unsupported data source: ${source}`, 400);
     if (!adapter.entityTypes.includes(locator.entity_type)) {
-      throw new Error(`Unsupported entity type for ${source}: ${locator.entity_type}`);
+      throw new DataGatewayError('invalid_request', `Unsupported entity type for ${source}: ${locator.entity_type}`, 400);
     }
-    const result = await adapter.getEntity(locator);
+    const result = await this.withTimeout(adapter.getEntity(locator));
     if (!result) return null;
 
     return {
@@ -109,11 +113,11 @@ export class DataGateway {
 
   async getMetrics(source: DataSource, locator: EntityLocator): Promise<MetricsResponse | null> {
     const adapter = this.adapters.get(source);
-    if (!adapter) throw new Error(`Unsupported data source: ${source}`);
+    if (!adapter) throw new DataGatewayError('invalid_request', `Unsupported data source: ${source}`, 400);
     if (!adapter.entityTypes.includes(locator.entity_type)) {
-      throw new Error(`Unsupported entity type for ${source}: ${locator.entity_type}`);
+      throw new DataGatewayError('invalid_request', `Unsupported entity type for ${source}: ${locator.entity_type}`, 400);
     }
-    const result = await adapter.getMetrics(locator);
+    const result = await this.withTimeout(adapter.getMetrics(locator));
     if (!result) return null;
 
     return {
@@ -131,18 +135,25 @@ export class DataGateway {
   private selectAdapters(sources?: DataSource[]): DataAdapter[] {
     if (!sources || sources.length === 0) return Array.from(this.adapters.values());
     sources.forEach(source => {
-      if (!DATA_SOURCES.includes(source)) throw new Error(`Unsupported data source: ${source}`);
+      if (!DATA_SOURCES.includes(source)) throw new DataGatewayError('invalid_request', `Unsupported data source: ${source}`, 400);
     });
     return Array.from(new Set(sources)).map(source => {
       const adapter = this.adapters.get(source);
-      if (!adapter) throw new Error(`Unsupported data source: ${source}`);
+      if (!adapter) throw new DataGatewayError('invalid_request', `Unsupported data source: ${source}`, 400);
       return adapter;
     });
   }
 
   private validateEntityTypes(entityTypes?: EntityType[]): void {
     entityTypes?.forEach(entityType => {
-      if (!ENTITY_TYPES.includes(entityType)) throw new Error(`Unsupported entity type: ${entityType}`);
+      if (!ENTITY_TYPES.includes(entityType)) throw new DataGatewayError('invalid_request', `Unsupported entity type: ${entityType}`, 400);
+    });
+  }
+
+  private async withTimeout<T>(operation: Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new DataGatewayError('service_unavailable', 'Data source timed out', 503)), this.adapterTimeoutMs);
+      operation.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
     });
   }
 }

@@ -7,7 +7,7 @@ interface SearchRow { id: number; name: string; }
 interface RepoIdentityRow { id: number; name: string; }
 interface RepoMetadataRow {
   description: string; default_branch: string; homepage_url: string; is_fork: number | boolean;
-  primary_language: string; license: string; topics: string[]; created_at: string; updated_at: string;
+  primary_language: string; license: string; topics: string[]; created_at: string; updated_at?: string; source_updated_at?: string;
 }
 interface OpenRankRow { observed_at: string; value: number | null; }
 const ENTITY_TYPES: readonly EntityType[] = ['repository'];
@@ -44,19 +44,21 @@ ORDER BY openrank DESC, name ASC LIMIT {limit:UInt32}`,
 SELECT argMax(description, updated_at) AS description, argMax(default_branch, updated_at) AS default_branch,
   argMax(homepage_url, updated_at) AS homepage_url, argMax(isFork, updated_at) AS is_fork,
   argMax(primary_language, updated_at) AS primary_language, argMax(license, updated_at) AS license,
-  argMax(topics, updated_at) AS topics, min(created_at) AS created_at, max(updated_at) AS updated_at
+  argMax(topics, updated_at) AS topics, min(created_at) AS created_at, max(updated_at) AS source_updated_at
 FROM ${this.database}.repo_info
 WHERE platform = {platform:String} AND id = {repoId:UInt64} AND status = {status:String}
 HAVING count() > 0 LIMIT 1`, { platform: 'GitHub', repoId: identity.id, status: 'normal' });
     const metadata = rows[0]; if (!metadata) return null;
-    const metrics = await this.metricsFor(identity.id, metadata.updated_at);
+    const updatedAt = metadata.source_updated_at ?? metadata.updated_at;
+    if (!updatedAt) throw new Error('Data source returned repository metadata without an update time');
+    const metrics = await this.metricsFor(identity.id, updatedAt);
     const dataQuality = [...metrics.data_quality, ...(metadata.description ? [] : ['description_missing'])];
     return { data: { source: this.source, entity_type: 'repository', entity_id: identity.name,
       name: this.displayName(identity.name), source_url: `https://github.com/${identity.name}`,
       attributes: { description: metadata.description, default_branch: metadata.default_branch,
         homepage_url: metadata.homepage_url, is_fork: Boolean(metadata.is_fork),
         primary_language: metadata.primary_language, license: metadata.license, topics: metadata.topics,
-        created_at: toIsoTime(metadata.created_at), updated_at: toIsoTime(metadata.updated_at) },
+        created_at: toIsoTime(metadata.created_at), updated_at: toIsoTime(updatedAt) },
       metrics: metrics.data }, as_of: metrics.as_of, provider: this.provider,
       data_quality: Array.from(new Set(dataQuality)), warnings: metrics.warnings };
   }
