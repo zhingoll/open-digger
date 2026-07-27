@@ -61,4 +61,16 @@ Run the real ClickHouse suite with:
 npm run test:data-gateway:clickhouse
 ```
 
-The ClickHouse runner starts the pinned temporary container, loads real-type boundary fixtures, runs the SQL-backed tests, and always executes `docker compose down -v`.
+The system runner starts two pinned, physically separate ClickHouse containers: OpenDigger on `127.0.0.1:18123` and OpenGauge on `127.0.0.1:18124`. Each container contains only its own database and boundary fixtures. The suite then starts the compiled HTTP server and a real stdio MCP client, exercises all four MCP tools and the four scenarios documented by the companion Skill, stops and restarts each database independently, and verifies recovery without restarting the Gateway processes.
+
+The same command also sends 1,000 mixed HTTP requests with 20 concurrent workers and reports success/error counts plus p50, p95, and maximum latency. Test output includes recovery timing and the stable Gateway PID. Cleanup always runs `docker compose down -v` and reports remaining project containers, networks, and volumes; all three counts must be zero.
+
+To confirm that physical isolation is enforced, point the Hugging Face test connection at the OpenDigger endpoint while using that endpoint's test password. The suite must fail because both configured ports are equal and the Hugging Face database is absent:
+
+```powershell
+$env:DATA_GATEWAY_TEST_HF_URL='http://127.0.0.1:18123'
+$env:DATA_GATEWAY_TEST_HF_PASSWORD='opendigger-test-password'
+npm run test:data-gateway:clickhouse
+```
+
+Run the normal command in a fresh shell (or remove both environment overrides) to restore the valid configuration. All fixtures and credentials in this compose project are synthetic and must never be reused for production.
