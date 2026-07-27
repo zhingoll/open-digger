@@ -72,8 +72,8 @@ Fetch each entity independently. Compare definitions, units, `as_of`, and `data_
 
 ### Partial source failure
 
-Run the unified search. If one source fails, answer from successful data while explicitly naming the unavailable source and warning.
+Replay this scenario with Hugging Face unavailable. Use the successful GitHub result, report `partial`, and include the Hugging Face warning.
 
 ```json
-{"tool":"search_entities","arguments":{"query":"open source metrics","sources":["github","huggingface"],"limit":20}}
+{"tool":"search_entities","arguments":{"query":"open-digger","sources":["github","huggingface"],"limit":20}}
 ```
