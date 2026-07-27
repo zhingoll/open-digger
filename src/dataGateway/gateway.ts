@@ -13,6 +13,9 @@ import {
 
 const DEFAULT_SEARCH_LIMIT = 20;
 const MAX_SEARCH_LIMIT = 100;
+const MAX_SEARCH_QUERY_LENGTH = 256;
+const DATA_SOURCES: readonly DataSource[] = ['github', 'huggingface'];
+const ENTITY_TYPES: readonly EntityType[] = ['repository', 'model', 'dataset', 'account', 'organization'];
 
 export interface GatewaySearchOptions {
   sources?: DataSource[];
@@ -45,8 +48,13 @@ export class DataGateway {
   async search(query: string, options: GatewaySearchOptions = {}): Promise<SearchResponse> {
     const normalizedQuery = query.trim();
     if (!normalizedQuery) throw new Error('Search query must not be empty');
+    if (normalizedQuery.length > MAX_SEARCH_QUERY_LENGTH) throw new Error('Search query is too long');
 
-    const limit = Math.min(Math.max(options.limit ?? DEFAULT_SEARCH_LIMIT, 1), MAX_SEARCH_LIMIT);
+    const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_SEARCH_LIMIT) {
+      throw new Error(`Search limit must be an integer between 1 and ${MAX_SEARCH_LIMIT}`);
+    }
+    this.validateEntityTypes(options.entity_types);
     const adapters = this.selectAdapters(options.sources);
     const settled = await Promise.allSettled(
       adapters.map(adapter => adapter.search(normalizedQuery, {
@@ -122,10 +130,19 @@ export class DataGateway {
 
   private selectAdapters(sources?: DataSource[]): DataAdapter[] {
     if (!sources || sources.length === 0) return Array.from(this.adapters.values());
+    sources.forEach(source => {
+      if (!DATA_SOURCES.includes(source)) throw new Error(`Unsupported data source: ${source}`);
+    });
     return Array.from(new Set(sources)).map(source => {
       const adapter = this.adapters.get(source);
       if (!adapter) throw new Error(`Unsupported data source: ${source}`);
       return adapter;
+    });
+  }
+
+  private validateEntityTypes(entityTypes?: EntityType[]): void {
+    entityTypes?.forEach(entityType => {
+      if (!ENTITY_TYPES.includes(entityType)) throw new Error(`Unsupported entity type: ${entityType}`);
     });
   }
 }

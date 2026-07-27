@@ -9,6 +9,7 @@ import {
   SearchOptions,
   SearchResult,
 } from './types';
+import { toIsoTime } from './time';
 
 export type QueryParams = Record<string, string | number | boolean>;
 export type QueryExecutor = <T>(query: string, queryParams?: QueryParams) => Promise<T[]>;
@@ -125,8 +126,8 @@ LIMIT 1`, { entityId });
         source_url: sourceUrl,
         attributes: {
           author: row.author,
-          created_at: row.created_at,
-          updated_at: row.updated_at,
+          created_at: toIsoTime(row.created_at),
+          updated_at: toIsoTime(row.updated_at),
           pipeline_tag: row.pipeline_tag,
           library_name: row.library_name,
           tags: row.tags,
@@ -164,8 +165,8 @@ LIMIT 1`, { entityId });
       source_url: sourceUrl,
       attributes: {
         author: row.author,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
+        created_at: toIsoTime(row.created_at),
+        updated_at: toIsoTime(row.updated_at),
         tags: row.tags,
         gated: Boolean(row.gated),
         disabled: Boolean(row.disabled),
@@ -193,23 +194,25 @@ HAVING argMax(private, lastModified) = 0
 LIMIT 1`, { entityId });
     const seed = seedRows[0];
     if (!seed || !seed.internal_id) return null;
-    const history = await this.query<HistoryRow>(`
+    const rawHistory = await this.query<HistoryRow>(`
 SELECT download_count, like_count, crawl_time
 FROM ${this.database}.dllk_history
 WHERE _id = {internalId:String}
 ORDER BY crawl_time ASC`, { internalId: seed.internal_id });
+    const history = this.normalizeHistory(rawHistory);
     const latest = history[history.length - 1];
-    const observedAt = latest?.crawl_time ?? seed.updated_at;
+    const seedUpdatedAt = toIsoTime(seed.updated_at);
+    const observedAt = latest?.crawl_time ?? seedUpdatedAt;
     const metrics: Record<string, MetricValue> = {
       'huggingface.downloads': {
         value: seed.downloads,
         unit: 'downloads',
-        observed_at: seed.updated_at,
+        observed_at: seedUpdatedAt,
       },
       'huggingface.likes': {
         value: seed.likes,
         unit: 'likes',
-        observed_at: seed.updated_at,
+        observed_at: seedUpdatedAt,
       },
       'huggingface.downloads_all_time': {
         value: seed.downloads_all_time,
@@ -217,9 +220,9 @@ ORDER BY crawl_time ASC`, { internalId: seed.internal_id });
         observed_at: observedAt,
       },
       'huggingface.last_modified': {
-        value: seed.updated_at,
+        value: seedUpdatedAt,
         unit: null,
-        observed_at: seed.updated_at,
+        observed_at: seedUpdatedAt,
       },
     };
     if (latest) {
@@ -240,7 +243,11 @@ ORDER BY crawl_time ASC`, { internalId: seed.internal_id });
       data: metrics,
       as_of: observedAt,
       provider: this.provider,
-      data_quality: latest ? [] : ['metric_history_missing'],
+      data_quality: [
+        ...(latest ? [] : ['metric_history_missing']),
+        ...([seed.downloads, seed.likes, seed.downloads_all_time].some(value => value === null)
+          ? ['metric_value_missing'] : []),
+      ],
       warnings: [],
     };
   }
@@ -301,5 +308,14 @@ LIMIT {limit:UInt32}`, { query, limit });
 
   private series(history: HistoryRow[], key: 'download_count' | 'like_count'): MetricSeriesPoint[] {
     return history.map(row => ({ time: row.crawl_time, value: row[key] }));
+  }
+
+  private normalizeHistory(history: HistoryRow[]): HistoryRow[] {
+    const byTime = new Map<string, HistoryRow>();
+    history.forEach(row => {
+      const crawlTime = toIsoTime(row.crawl_time);
+      byTime.set(crawlTime, { ...row, crawl_time: crawlTime });
+    });
+    return Array.from(byTime.values()).sort((left, right) => left.crawl_time.localeCompare(right.crawl_time));
   }
 }
