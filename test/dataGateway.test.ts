@@ -1,56 +1,19 @@
 import assert from 'assert';
-import { DataAdapter } from '../src/dataGateway/adapter';
 import { DataGateway } from '../src/dataGateway/gateway';
+import { GitHubAdapter } from '../src/dataGateway/githubAdapter';
 import { HuggingFaceAdapter, QueryExecutor, QueryParams } from '../src/dataGateway/huggingFaceAdapter';
-import {
-  AdapterResult,
-  EntityData,
-  EntityLocator,
-  MetricValue,
-  SearchOptions,
-  SearchResult,
-} from '../src/dataGateway/types';
 
-class FakeAdapter implements DataAdapter {
-  readonly entityTypes = ['repository'] as const;
-  readonly source: 'github';
-  readonly provider: 'opendigger';
-  private readonly shouldFail: boolean;
-
-  constructor(
-    source: 'github',
-    provider: 'opendigger',
-    shouldFail = false,
-  ) {
-    this.source = source;
-    this.provider = provider;
-    this.shouldFail = shouldFail;
-  }
-
-  async search(query: string, _options: SearchOptions): Promise<AdapterResult<SearchResult[]>> {
-    if (this.shouldFail) throw new Error('offline');
-    return {
-      data: [{
-        source: this.source,
-        entity_type: 'repository',
-        entity_id: `example/${query}`,
-        name: query,
-        source_url: `https://github.com/example/${query}`,
-      }],
-      as_of: '2026-07-22T00:00:00.000Z',
-      provider: this.provider,
-      data_quality: [],
-      warnings: [],
-    };
-  }
-
-  async getEntity(_locator: EntityLocator): Promise<AdapterResult<EntityData> | null> { return null; }
-  async getMetrics(_locator: EntityLocator): Promise<AdapterResult<Record<string, MetricValue>> | null> { return null; }
+function githubAdapter(shouldFail = false): GitHubAdapter {
+  return new GitHubAdapter(async <T>(sql: string, params: QueryParams = {}) => {
+    if (shouldFail) throw new Error('offline');
+    if (sql.includes('positionCaseInsensitiveUTF8')) return [{ id: 1, name: `example/${params.query}` }] as T[];
+    return [] as T[];
+  }, 'opensource', () => new Date('2026-07-22T00:00:00Z'));
 }
 
 describe('DataGateway', () => {
   it('combines adapters behind one search response', async () => {
-    const github = new FakeAdapter('github', 'opendigger');
+    const github = githubAdapter();
     const huggingface = new HuggingFaceAdapter(async <T>(sql: string) => {
       if (sql.includes('model_repos')) {
         return [{ id: 'Qwen/Qwen3-8B', updated_at: '2026-07-22T00:00:00.000Z' }] as T[];
@@ -70,7 +33,7 @@ describe('DataGateway', () => {
 
   it('returns partial results when one source is unavailable', async () => {
     const gateway = new DataGateway([
-      new FakeAdapter('github', 'opendigger', true),
+      githubAdapter(true),
       new HuggingFaceAdapter(async <T>(sql: string) => {
         if (sql.includes('model_repos')) {
           return [{ id: 'Qwen/Qwen3-8B', updated_at: '2026-07-22T00:00:00.000Z' }] as T[];

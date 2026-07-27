@@ -7,7 +7,7 @@ let exitCode = 1;
 try {
   run('docker', [...dockerArgs, 'up', '-d', '--wait']);
   const mocha = require.resolve('mocha/bin/mocha.js');
-  const testFile = path.resolve('.data-gateway-test-dist/test/dataGatewayClickHouse.integration.js');
+  const testFile = path.resolve('.data-gateway-test-dist/test/dataGatewayClickHouse.test.js');
   run(process.execPath, [mocha, testFile, '--reporter', 'spec']);
   exitCode = 0;
 } finally {
