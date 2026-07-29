@@ -1,4 +1,4 @@
-export type PublicErrorCode = 'invalid_request' | 'not_found' | 'method_not_allowed' | 'service_unavailable' | 'internal_error';
+export type PublicErrorCode = 'invalid_request' | 'unauthorized' | 'rate_limited' | 'not_found' | 'method_not_allowed' | 'service_unavailable' | 'internal_error';
 
 export interface PublicErrorBody {
   error: { code: PublicErrorCode; message: string };

@@ -5,8 +5,6 @@ import fs from 'fs';
 import http from 'http';
 import path from 'path';
 import { performance } from 'perf_hooks';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { createClickHouseExecutor } from '../src/dataGateway/clickHouseExecutor';
 import { GitHubAdapter } from '../src/dataGateway/githubAdapter';
 import { HuggingFaceAdapter } from '../src/dataGateway/huggingFaceAdapter';
@@ -18,8 +16,8 @@ interface HttpResult {
 }
 
 interface SkillScenario {
-  tool: string;
-  arguments: Record<string, unknown>;
+  method: 'GET';
+  path: string;
 }
 
 const GITHUB_URL = process.env.DATA_GATEWAY_TEST_GITHUB_URL ?? 'http://127.0.0.1:18123';
@@ -29,12 +27,13 @@ const HF_PASSWORD = 'opengauge-test-password';
 const HF_CONNECTION_PASSWORD = process.env.DATA_GATEWAY_TEST_HF_PASSWORD ?? HF_PASSWORD;
 const HTTP_PORT = 18125;
 const HTTP_BASE = `http://127.0.0.1:${HTTP_PORT}`;
+const API_KEY = 'system-test-api-key-000000000000001';
 const COMPOSE_FILE = path.resolve('docker-compose.data-gateway.test.yml');
 const COMPOSE_PROJECT = 'open-digger-data-gateway-test';
 const FORBIDDEN_PUBLIC_MARKERS = [
   'SELECT ', 'opensource', 'huggingface_scrapy', 'DB::Exception',
   '127.0.0.1:18123', '127.0.0.1:18124', 'password=', '\n    at ',
-  GITHUB_PASSWORD, HF_PASSWORD,
+  GITHUB_PASSWORD, HF_PASSWORD, API_KEY,
 ];
 
 describe('real two-backend Data Gateway system integration', function () {
@@ -55,14 +54,14 @@ describe('real two-backend Data Gateway system integration', function () {
     OPENGAUGE_CLICKHOUSE_PASSWORD: HF_CONNECTION_PASSWORD,
     OPENGAUGE_CLICKHOUSE_DATABASE: 'huggingface_scrapy',
     DATA_GATEWAY_ADAPTER_TIMEOUT_MS: '1200',
+    DATA_GATEWAY_API_KEYS: API_KEY,
+    DATA_GATEWAY_RATE_LIMIT_MAX_REQUESTS: '2000',
+    DATA_GATEWAY_RATE_LIMIT_WINDOW_MS: '60000',
   };
 
   let httpProcess: ReturnType<typeof spawn>;
   let httpPid = 0;
   let httpLogs = '';
-  let mcpClient: Client;
-  let mcpTransport: StdioClientTransport;
-  let mcpLogs = '';
 
   before(async () => {
     const serverFile = path.resolve('.data-gateway-test-dist/src/dataGateway/server.js');
@@ -77,23 +76,12 @@ describe('real two-backend Data Gateway system integration', function () {
     httpProcess.stderr?.on('data', chunk => { httpLogs += chunk.toString(); });
     await waitUntil(async () => (await requestJson('/v1/sources')).status === 200, 'HTTP server startup');
 
-    mcpClient = new Client({ name: 'two-backend-system-test', version: '1.0.0' }, { capabilities: {} });
-    mcpTransport = new StdioClientTransport({
-      command: process.execPath,
-      args: [path.resolve('.data-gateway-test-dist/src/dataGateway/mcp/stdio.js')],
-      cwd: process.cwd(),
-      env: runtimeEnv,
-      stderr: 'pipe',
-    });
-    mcpTransport.stderr?.on('data', chunk => { mcpLogs += chunk.toString(); });
-    await mcpClient.connect(mcpTransport);
   });
 
   after(async () => {
-    await mcpClient?.close();
     await stopChild(httpProcess);
     await Promise.all([githubConnection.close(), hfConnection.close()]);
-    assertPublic(`${httpLogs}\n${mcpLogs}`);
+    assertPublic(httpLogs);
   });
 
   it('uses two distinct ClickHouse endpoints with mutually absent databases', async () => {
@@ -193,23 +181,28 @@ describe('real two-backend Data Gateway system integration', function () {
     assert.strictEqual(httpProcess.exitCode, null);
   });
 
-  it('serves all four MCP tools and replays the healthy Skill scenarios', async () => {
-    const tools = await mcpClient.listTools();
-    assert.deepStrictEqual(tools.tools.map(tool => tool.name).sort(), [
-      'get_entity_metrics', 'get_entity_profile', 'list_data_sources', 'search_entities',
-    ]);
+  it('rejects an invalid API key and accepts the configured key without leaking either', async () => {
+    const invalid = await requestJson('/v1/sources', 'wrong-system-key-00000000000000001');
+    assert.strictEqual(invalid.status, 401);
+    assert.strictEqual(invalid.body.error.code, 'unauthorized');
+    assertPublic(invalid.text);
+    const valid = await expectHttp('/v1/sources');
+    assert.strictEqual(valid.status, 200);
+    process.stdout.write('AUTH invalid_key_status=401 valid_key_status=200\n');
+  });
 
-    const listed = await callMcp('list_data_sources', {});
+  it('replays all four no-code Skill scenarios through authenticated HTTP', async () => {
+    const listed = (await expectHttp(skillScenarios('Discover data sources')[0].path)).body;
     assert.deepStrictEqual(listed.data.map((item: any) => item.source), ['github', 'huggingface']);
 
     const unified = skillScenarios('Unified search')[0];
-    const unifiedResult = await callMcp(unified.tool, unified.arguments);
+    const unifiedResult = (await expectHttp(unified.path)).body;
     assert.strictEqual(unifiedResult.meta.partial, false);
     assert(unifiedResult.data.some((item: any) => item.source === 'github'));
     assert(unifiedResult.data.some((item: any) => item.source === 'huggingface'));
 
     const profileScenario = skillScenarios('Hugging Face profile')[0];
-    const profile = await callMcp(profileScenario.tool, profileScenario.arguments);
+    const profile = (await expectHttp(profileScenario.path)).body;
     assert.strictEqual(profile.data.entity_id, 'Qwen/Qwen3-8B');
     assert.strictEqual(profile.data.metrics['huggingface.downloads'].value, 150);
     assert.strictEqual(profile.meta.provider, 'opengauge');
@@ -217,13 +210,13 @@ describe('real two-backend Data Gateway system integration', function () {
 
     const metricScenarios = skillScenarios('Cross-source metric comparison');
     assert.strictEqual(metricScenarios.length, 2);
-    const githubMetrics = await callMcp(metricScenarios[0].tool, metricScenarios[0].arguments);
-    const hfMetrics = await callMcp(metricScenarios[1].tool, metricScenarios[1].arguments);
+    const githubMetrics = (await expectHttp(metricScenarios[0].path)).body;
+    const hfMetrics = (await expectHttp(metricScenarios[1].path)).body;
     assert.strictEqual(githubMetrics.data['github.openrank'].value, 12);
     assert.strictEqual(hfMetrics.data['huggingface.downloads'].value, 150);
   });
 
-  it('degrades on HF loss and recovers without restarting HTTP or MCP', async () => {
+  it('degrades on HF loss and recovers without restarting HTTP', async () => {
     const startedAt = performance.now();
     await stopAndRecover(
       'opengauge-clickhouse',
@@ -231,27 +224,20 @@ describe('real two-backend Data Gateway system integration', function () {
         await assert.rejects(hfConnection.query('SELECT 1'));
         const githubProfile = await expectHttp('/v1/github/repositories/X-lab2017/open-digger');
         assert.strictEqual(githubProfile.body.data.metrics['github.openrank'].value, 12);
-        const partial = await expectHttp('/v1/search?q=open-digger&sources=github,huggingface');
+        const scenario = skillScenarios('Unified search')[0];
+        const partial = await expectHttp(scenario.path);
         assert.strictEqual(partial.body.meta.partial, true);
         assert(partial.body.data.length > 0 && partial.body.data.every((item: any) => item.source === 'github'));
         assert(partial.body.meta.warnings.some((warning: string) => warning.startsWith('huggingface:')));
-
-        const scenario = skillScenarios('Partial source failure')[0];
-        const mcpPartial = await callMcp(scenario.tool, scenario.arguments);
-        assert.strictEqual(mcpPartial.meta.partial, true);
-        assert(mcpPartial.data.length > 0 && mcpPartial.data.every((item: any) => item.source === 'github'));
-        assert(mcpPartial.meta.warnings.some((warning: string) => warning.startsWith('huggingface:')));
       },
       async () => {
-        const httpRecovered = await waitForCompleteSearch('open-digger');
-        const mcpRecovered = await waitForMcpCompleteSearch('open-digger');
+        const httpRecovered = await waitForCompleteSearch('qwen');
         assert.strictEqual(httpRecovered.meta.partial, false);
-        assert.strictEqual(mcpRecovered.meta.partial, false);
       },
     );
     assert.strictEqual(httpProcess.pid, httpPid);
     assert.strictEqual(httpProcess.exitCode, null);
-    process.stdout.write(`RECOVERY hf stopped=confirmed http_partial=true mcp_partial=true recovered_ms=${Math.round(performance.now() - startedAt)} gateway_pid=${httpPid}\n`);
+    process.stdout.write(`RECOVERY hf stopped=confirmed http_partial=true recovered_ms=${Math.round(performance.now() - startedAt)} gateway_pid=${httpPid}\n`);
   });
 
   it('degrades on GitHub loss and recovers symmetrically without a Gateway restart', async () => {
@@ -266,23 +252,15 @@ describe('real two-backend Data Gateway system integration', function () {
         assert.strictEqual(partial.body.meta.partial, true);
         assert(partial.body.data.length > 0 && partial.body.data.every((item: any) => item.source === 'huggingface'));
         assert(partial.body.meta.warnings.some((warning: string) => warning.startsWith('github:')));
-        const mcpPartial = await callMcp('search_entities', {
-          query: 'qwen', sources: ['github', 'huggingface'], limit: 10,
-        });
-        assert.strictEqual(mcpPartial.meta.partial, true);
-        assert(mcpPartial.data.length > 0 && mcpPartial.data.every((item: any) => item.source === 'huggingface'));
-        assert(mcpPartial.meta.warnings.some((warning: string) => warning.startsWith('github:')));
       },
       async () => {
         const httpRecovered = await waitForCompleteSearch('qwen');
-        const mcpRecovered = await waitForMcpCompleteSearch('qwen');
         assert.strictEqual(httpRecovered.meta.partial, false);
-        assert.strictEqual(mcpRecovered.meta.partial, false);
       },
     );
     assert.strictEqual(httpProcess.pid, httpPid);
     assert.strictEqual(httpProcess.exitCode, null);
-    process.stdout.write(`RECOVERY github stopped=confirmed http_partial=true mcp_partial=true recovered_ms=${Math.round(performance.now() - startedAt)} gateway_pid=${httpPid}\n`);
+    process.stdout.write(`RECOVERY github stopped=confirmed http_partial=true recovered_ms=${Math.round(performance.now() - startedAt)} gateway_pid=${httpPid}\n`);
   });
 
   it('handles 1000 mixed HTTP requests at concurrency 20 with valid responses', async () => {
@@ -336,16 +314,6 @@ describe('real two-backend Data Gateway system integration', function () {
     assert.strictEqual(httpProcess.exitCode, null);
   });
 
-  async function callMcp(tool: string, args: Record<string, unknown>): Promise<any> {
-    const result = await mcpClient.callTool({ name: tool, arguments: args });
-    assert.strictEqual(result.isError, undefined, JSON.stringify(result));
-    const blocks = result.content as { type: string; text?: string }[];
-    const text = blocks.find(block => block.type === 'text')?.text;
-    assert(text, `MCP tool ${tool} returned no text`);
-    assertPublic(text);
-    return JSON.parse(text);
-  }
-
   async function stopAndRecover(
     service: string,
     degraded: () => Promise<void>,
@@ -368,14 +336,6 @@ describe('real two-backend Data Gateway system integration', function () {
     }, `HTTP recovery for ${query}`);
   }
 
-  async function waitForMcpCompleteSearch(query: string): Promise<any> {
-    return waitUntil(async () => {
-      const result = await callMcp('search_entities', {
-        query, sources: ['github', 'huggingface'], limit: 20,
-      });
-      return result.meta?.partial === false ? result : false;
-    }, `MCP recovery for ${query}`);
-  }
 });
 
 async function expectHttp(route: string): Promise<HttpResult> {
@@ -385,9 +345,15 @@ async function expectHttp(route: string): Promise<HttpResult> {
   return response;
 }
 
-function requestJson(route: string): Promise<HttpResult> {
+function requestJson(route: string, apiKey = API_KEY): Promise<HttpResult> {
   return new Promise((resolve, reject) => {
-    const request = http.get(`${HTTP_BASE}${route}`, response => {
+    const target = new URL(`${HTTP_BASE}${route}`);
+    const request = http.get({
+      hostname: target.hostname,
+      port: target.port,
+      path: `${target.pathname}${target.search}`,
+      headers: { Authorization: `Bearer ${apiKey}` },
+    }, response => {
       const chunks: Buffer[] = [];
       response.on('data', chunk => chunks.push(Buffer.from(chunk)));
       response.on('end', () => {

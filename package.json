@@ -16,11 +16,11 @@
     "cron": "npm run build && node --max-old-space-size=48000 lib/cron/index.js",
     "test": "CLICKHOUSE_URL=http://ci.open-digger.cn:8123 CLICKHOUSE_USERNAME=default CLICKHOUSE_PASSWORD= mocha",
     "import-label-to-database": "npm run build && node lib/scripts/importLabelToDatabase.js",
-    "build:data-gateway-tests": "tsc -p test/tsconfig.dataGateway.json",
+    "build:data-gateway-tests": "node -e \"require('fs').rmSync('.data-gateway-test-dist',{recursive:true,force:true})\" && tsc -p test/tsconfig.dataGateway.json",
     "test:data-gateway": "npm run build:data-gateway-tests && mocha \".data-gateway-test-dist/test/dataGateway*.test.js\" --ignore \".data-gateway-test-dist/test/dataGatewayClickHouse.test.js\" --reporter spec",
     "test:data-gateway:clickhouse": "npm run build:data-gateway-tests && node .data-gateway-test-dist/src/dataGateway/integrationTestRunner.js",
-    "start:data-gateway": "npm run build && node lib/dataGateway/server.js",
-    "start:data-gateway:mcp": "npm run build && node lib/dataGateway/mcp/stdio.js"
+    "test:data-gateway:real": "npm run build:data-gateway-tests && node .data-gateway-test-dist/src/dataGateway/realTestRunner.js",
+    "start:data-gateway": "npm run build && node lib/dataGateway/server.js"
   },
   "repository": {
     "type": "git",
@@ -39,7 +39,6 @@
     "@clickhouse/client": "1.11.2",
     "@google/maps": "^1.1.3",
     "@imgly/background-removal-node": "^1.4.5",
-    "@modelcontextprotocol/sdk": "1.22.0",
     "@octokit/app": "^4.1.0",
     "@octokit/auth-app": "^4.0.9",
     "@octokit/core": "^3.6.0",
@@ -69,6 +68,7 @@
   },
   "type": "commonjs",
   "devDependencies": {
+    "@apidevtools/swagger-parser": "12.1.0",
     "@octokit/rest": "^19.0.5",
     "@types/ali-oss": "^6.16.7",
     "@types/async": "^3.2.24",

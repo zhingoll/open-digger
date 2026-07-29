@@ -1,12 +1,24 @@
 import assert from 'assert';
 import http from 'http';
 import { AddressInfo } from 'net';
+import { ApiKeyRateLimiter, DataGatewayHttpSecurity, HashedApiKeyVerifier } from '../src/dataGateway/auth';
 import { DataGateway } from '../src/dataGateway/gateway';
 import { GitHubAdapter } from '../src/dataGateway/githubAdapter';
 import { HuggingFaceAdapter, QueryExecutor, QueryParams } from '../src/dataGateway/huggingFaceAdapter';
 import { createDataGatewayHttpServer } from '../src/dataGateway/http';
 
 type Behavior = 'ok' | 'fail' | 'secret-fail' | 'slow';
+const API_KEY = 'test-api-key-00000000000000000001';
+
+function security(): DataGatewayHttpSecurity {
+  return {
+    verifier: new HashedApiKeyVerifier([API_KEY]),
+    rateLimiter: new ApiKeyRateLimiter(1000, 60000),
+    auditLogger: { write: () => undefined },
+    requestId: () => 'test-request-id',
+    now: Date.now,
+  };
+}
 
 function github(behavior: Behavior = 'ok'): GitHubAdapter {
   return new GitHubAdapter(executor(behavior, async <T>(sql: string, params: QueryParams = {}) => {
@@ -47,9 +59,10 @@ function executor(behavior: Behavior, handle: QueryExecutor): QueryExecutor {
   };
 }
 
-async function request(port: number, path: string, method = 'GET'): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
+async function request(port: number, path: string, method = 'GET', apiKey = API_KEY): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
   return new Promise((resolve, reject) => {
-    const req = http.request({ host: '127.0.0.1', port, path, method }, response => {
+    const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined;
+    const req = http.request({ host: '127.0.0.1', port, path, method, headers }, response => {
       const chunks: Buffer[] = [];
       response.on('data', chunk => chunks.push(Buffer.from(chunk)));
       response.on('end', () => resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks).toString('utf8') }));
@@ -80,7 +93,7 @@ describe('Data Gateway HTTP E2E', () => {
   let server: http.Server;
   let port: number;
   beforeEach(async () => {
-    server = createDataGatewayHttpServer(new DataGateway([github(), huggingface()]));
+    server = createDataGatewayHttpServer(new DataGateway([github(), huggingface()]), security());
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
     port = (server.address() as AddressInfo).port;
   });
@@ -112,7 +125,7 @@ describe('Data Gateway HTTP E2E', () => {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     server = createDataGatewayHttpServer(new DataGateway([
       github('secret-fail'), huggingface('secret-fail'),
-    ]));
+    ]), security());
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
     port = (server.address() as AddressInfo).port;
     const response = await request(port, '/v1/search?q=x');
@@ -126,7 +139,7 @@ describe('Data Gateway HTTP E2E', () => {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     server = createDataGatewayHttpServer(new DataGateway([
       github('fail'), huggingface(),
-    ]));
+    ]), security());
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
     port = (server.address() as AddressInfo).port;
     const response = await request(port, '/v1/search?q=qwen');
@@ -136,7 +149,7 @@ describe('Data Gateway HTTP E2E', () => {
 
   it('returns a sanitized 500 for an unexpected entity failure', async () => {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
-    server = createDataGatewayHttpServer(new DataGateway([github('secret-fail')]));
+    server = createDataGatewayHttpServer(new DataGateway([github('secret-fail')]), security());
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
     port = (server.address() as AddressInfo).port;
     const response = await request(port, '/v1/github/repositories/org/repo');

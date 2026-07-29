@@ -1,4 +1,4 @@
 interface:
   display_name: "OpenDigger Unified Data Access"
   short_description: "Query unified GitHub and Hugging Face data"
-  default_prompt: "Use $open-digger-unified-data-access to search GitHub and Hugging Face data through the unified MCP tools."
+  default_prompt: "Use $open-digger-unified-data-access with the configured OpenShare HTTP Connector to query unified GitHub and Hugging Face data while preserving provenance and partial-source warnings."

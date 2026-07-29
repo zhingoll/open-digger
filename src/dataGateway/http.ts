@@ -1,25 +1,46 @@
 import http, { IncomingMessage, ServerResponse } from 'http';
+import { DataGatewayHttpSecurity } from './auth';
 import { DataGateway } from './gateway';
 import { DataGatewayError, publicError } from './errors';
 import { DataSource, EntityLocator, EntityType } from './types';
 
 const MAX_REQUEST_TARGET_LENGTH = 2048;
 
-export function createDataGatewayHttpServer(gateway: DataGateway): http.Server {
+export function createDataGatewayHttpServer(gateway: DataGateway, security: DataGatewayHttpSecurity): http.Server {
   return http.createServer((request, response) => {
-    void handleRequest(gateway, request, response);
+    void handleRequest(gateway, security, request, response);
   });
 }
 
-async function handleRequest(gateway: DataGateway, request: IncomingMessage, response: ServerResponse): Promise<void> {
+async function handleRequest(
+  gateway: DataGateway,
+  security: DataGatewayHttpSecurity,
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> {
+  const startedAt = security.now();
+  const requestId = security.requestId();
+  let fingerprint = 'unauthenticated';
+  let route = 'unmatched';
+  response.setHeader('X-Request-ID', requestId);
   try {
     const requestTarget = request.url ?? '/';
+    if (isV1RequestTarget(requestTarget)) {
+      const verified = await authenticate(request, security);
+      fingerprint = verified.fingerprint;
+      const decision = security.rateLimiter.consume(fingerprint);
+      if (!decision.allowed) {
+        response.setHeader('Retry-After', String(decision.retryAfterSeconds));
+        throw new DataGatewayError('rate_limited', 'Rate limit exceeded', 429);
+      }
+    }
     if (requestTarget.length > MAX_REQUEST_TARGET_LENGTH) throw invalid('Request target is too long');
+    const url = new URL(requestTarget, 'http://127.0.0.1');
+    route = auditRoute(url.pathname);
     if (request.method !== 'GET') {
       response.setHeader('Allow', 'GET');
       throw new DataGatewayError('method_not_allowed', 'Only GET is supported', 405);
     }
-    const url = new URL(requestTarget, 'http://127.0.0.1');
     if (url.pathname === '/v1/sources') {
       send(response, 200, { schema_version: '1.0', data: gateway.listSources(), meta: { as_of: new Date().toISOString() } });
       return;
@@ -36,17 +57,58 @@ async function handleRequest(gateway: DataGateway, request: IncomingMessage, res
       }
       send(response, 200, result); return;
     }
-    const route = parseEntityRoute(url.pathname);
-    if (!route) throw new DataGatewayError('not_found', 'Route not found', 404);
-    const result = route.metrics
-      ? await gateway.getMetrics(route.source, route.locator)
-      : await gateway.getEntity(route.source, route.locator);
+    const entityRoute = parseEntityRoute(url.pathname);
+    if (!entityRoute) throw new DataGatewayError('not_found', 'Route not found', 404);
+    const result = entityRoute.metrics
+      ? await gateway.getMetrics(entityRoute.source, entityRoute.locator)
+      : await gateway.getEntity(entityRoute.source, entityRoute.locator);
     if (!result) throw new DataGatewayError('not_found', 'Entity not found', 404);
     send(response, 200, result);
   } catch (error) {
     const result = publicError(error);
+    if (result.status === 401) response.setHeader('WWW-Authenticate', 'Bearer');
     send(response, result.status, result.body);
+  } finally {
+    security.auditLogger.write({
+      request_id: requestId,
+      key_fingerprint: fingerprint,
+      method: request.method ?? 'UNKNOWN',
+      route,
+      status: response.statusCode,
+      duration_ms: Math.max(0, security.now() - startedAt),
+    });
   }
+}
+
+function isV1RequestTarget(requestTarget: string): boolean {
+  return requestTarget === '/v1'
+    || requestTarget.startsWith('/v1/')
+    || requestTarget.startsWith('/v1?');
+}
+
+async function authenticate(request: IncomingMessage, security: DataGatewayHttpSecurity): Promise<{ fingerprint: string }> {
+  const authorization = request.headers.authorization;
+  const match = typeof authorization === 'string'
+    ? authorization.match(/^Bearer ([A-Za-z0-9\-._~+/]+=*)$/)
+    : null;
+  if (!match) throw unauthorized();
+  const verified = await security.verifier.verify(match[1]);
+  if (!verified) throw unauthorized();
+  return verified;
+}
+
+function unauthorized(): DataGatewayError {
+  return new DataGatewayError('unauthorized', 'A valid Bearer API key is required', 401);
+}
+
+function auditRoute(pathname: string): string {
+  if (pathname === '/v1/sources' || pathname === '/v1/search') return pathname;
+  const route = parseEntityRoute(pathname);
+  if (!route) return 'unmatched';
+  const prefix = route.source === 'github'
+    ? '/v1/github/repositories'
+    : `/v1/huggingface/${route.locator.entity_type}s`;
+  return `${prefix}/{namespace}/{name}${route.metrics ? '/metrics' : ''}`;
 }
 
 function parseEntityRoute(pathname: string): { source: DataSource; locator: EntityLocator; metrics: boolean } | null {

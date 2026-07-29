@@ -1,79 +1,85 @@
 ---
 name: open-digger-unified-data-access
-description: Query and compare unified GitHub repository and Hugging Face model or dataset data through the OpenDigger Data Gateway MCP. Use for cross-source search, entity profiles, current or historical metrics, provenance checks, data-quality interpretation, and partial-source failure handling.
+description: Query unified GitHub repository and Hugging Face model or dataset data through an OpenShare HTTP Connector imported from the OpenDigger Data Gateway OpenAPI contract. Use for source discovery, search, profiles, metrics, provenance, data-quality interpretation, and partial-source handling.
 ---
 
 # OpenDigger Unified Data Access
 
-Use only the Data Gateway MCP tools. Treat their responses as source records, not as permission to infer missing facts.
+Use only the OpenShare HTTP Connector imported from `docs/openapi/data-gateway.v1.yaml`. This is a no-code workflow: the user does not install this repository, run scripts, or receive database access.
 
-## Workflow
+## Required client configuration
 
-1. Call `list_data_sources` when availability or supported entity types are unknown.
-2. Call `search_entities` to resolve an entity ID. Narrow `sources` or `entity_types` when the request is source-specific.
-3. Call `get_entity_profile` for attributes plus metrics, or `get_entity_metrics` when only metrics are needed.
-4. Report each record's `source`, `as_of`, and `data_quality`. For search, also inspect `partial` and `warnings`.
-5. Compare values only when their definitions and units are compatible. Keep GitHub `github.*` and Hugging Face `huggingface.*` metrics visibly attributed.
+The client administrator must configure the Connector before this Skill is used:
 
-## Tool inputs
+- Store the deployed Gateway base URL in the client credential named `OPENSHARE_DATA_GATEWAY_BASE_URL`.
+- Store the API key in the client Secret or Credential named `OPENSHARE_DATA_GATEWAY_API_KEY` and bind it to the OpenAPI `bearerAuth` scheme.
+- Import the OpenAPI contract and expose its eight read-only GET operations through the Connector.
 
-- `list_data_sources`: no arguments.
-- `search_entities`: `query`; optional `sources`, `entity_types`, and integer `limit` from 1 through 100.
-- `get_entity_profile`: `source`, `entity_type`, and `entity_id` in `namespace/name` form.
-- `get_entity_metrics`: the same locator fields as the profile tool.
+These are credential names, not credential values. Never ask the user to paste a key into a prompt, never place a key in this Skill, and never echo an authorization header.
 
-Supported source/type pairs are GitHub `repository`, and Hugging Face `model` or `dataset`. Do not substitute account or organization queries unless `list_data_sources` explicitly reports support.
+## Operation selection
+
+1. Use `GET /v1/sources` to discover available sources and supported entity types.
+2. Use `GET /v1/search` to resolve an entity ID. Narrow `sources` and `entity_types` when the request is source-specific.
+3. Use the GitHub repository or Hugging Face model/dataset profile route for attributes plus metrics.
+4. Use the corresponding `/metrics` route when only metrics or history is needed.
+
+Supported pairs are GitHub `repository`, and Hugging Face `model` or `dataset`. Do not invent account, organization, or unsupported-source operations.
 
 ## Interpretation rules
 
-- Preserve timestamps. Do not present records with different `as_of` values as simultaneous observations without saying so.
-- Explain every `data_quality` flag relevant to the answer.
-- If `partial` is true, use the successful results and name unavailable sources from `warnings`.
-- Never invent missing attributes, metrics, history points, entities, or source results. Say that the value is unavailable.
-- Do not turn Hugging Face downloads and GitHub OpenRank into a composite score. They measure different things.
+- Preserve `source`, `as_of`, `provider`, and every `data_quality` flag.
+- For search, always inspect `partial` and `warnings`. If `partial` is true, use successful records but name each unavailable source reported by `warnings`.
+- Never invent missing attributes, entities, metrics, history points, timestamps, or source results.
+- Compare values only when definitions and units are compatible. Never combine GitHub OpenRank and Hugging Face downloads into one score.
+- A `401` means the client credential binding must be repaired; do not request the raw key.
+- A `429` means wait for the `Retry-After` interval before retrying.
 
 ## Guardrails
 
-- Never generate or execute arbitrary SQL.
-- Never request database credentials.
-- Never bypass the Data Gateway, call ClickHouse directly, or expose internal table names.
-- Never retry around Gateway validation or private-entity filtering.
-- Return the sanitized tool error when a request fails; do not speculate about internal connection details.
+- Do not use MCP or stdio.
+- Do not use curl, Node, Python, or any other script to bypass the Connector.
+- Do not connect to ClickHouse or request database credentials.
+- Do not generate or execute arbitrary SQL.
+- Do not bypass validation, private-entity filtering, rate limits, or sanitized errors.
+- Do not claim compatibility with every AI Agent; this workflow requires a client with native HTTP/OpenAPI Connector support.
 
 ## Replayable scenarios
 
-### Unified search
+The JSON blocks describe Connector requests, not executable scripts. The Connector supplies the configured base URL and credential.
 
-Search both sources and report `partial` and `warnings` with the results.
+### Discover data sources
+
+List available sources before answering a question with an uncertain source or entity type.
 
 ```json
-{"tool":"search_entities","arguments":{"query":"qwen","sources":["github","huggingface"],"limit":10}}
+{"method":"GET","path":"/v1/sources"}
+```
+
+### Unified search
+
+Search both sources. Report `partial` and `warnings`; the same request must remain useful if either source is temporarily unavailable.
+
+```json
+{"method":"GET","path":"/v1/search?q=qwen&sources=github,huggingface&limit=10"}
 ```
 
 ### Hugging Face profile
 
-Fetch the profile, retain provenance and quality flags, and state unavailable fields honestly.
+Fetch the profile and retain provenance, timestamp, and quality flags. State unavailable fields honestly.
 
 ```json
-{"tool":"get_entity_profile","arguments":{"source":"huggingface","entity_type":"model","entity_id":"Qwen/Qwen3-8B"}}
+{"method":"GET","path":"/v1/huggingface/models/Qwen/Qwen3-8B"}
 ```
 
 ### Cross-source metric comparison
 
-Fetch each entity independently. Compare definitions, units, `as_of`, and `data_quality`; do not merge the metrics.
+Fetch the two entities independently. Compare definitions, units, `as_of`, and `data_quality`; do not merge the metrics.
 
 ```json
-{"tool":"get_entity_metrics","arguments":{"source":"github","entity_type":"repository","entity_id":"X-lab2017/open-digger"}}
+{"method":"GET","path":"/v1/github/repositories/X-lab2017/open-digger/metrics"}
 ```
 
 ```json
-{"tool":"get_entity_metrics","arguments":{"source":"huggingface","entity_type":"model","entity_id":"Qwen/Qwen3-8B"}}
-```
-
-### Partial source failure
-
-Replay this scenario with Hugging Face unavailable. Use the successful GitHub result, report `partial`, and include the Hugging Face warning.
-
-```json
-{"tool":"search_entities","arguments":{"query":"open-digger","sources":["github","huggingface"],"limit":20}}
+{"method":"GET","path":"/v1/huggingface/models/Qwen/Qwen3-8B/metrics"}
 ```
