@@ -43,6 +43,29 @@ describe('Data Gateway API key boundary', () => {
     });
   });
 
+  it('authenticates every request target that normalizes to a v1 route', async () => {
+    const requestTargets = [
+      'http://example.invalid/v1/sources',
+      '//example.invalid/v1/sources',
+      '/outside/../v1/sources',
+      '/%2e/v1/sources',
+    ];
+    await withServer(defaultSecurity(), async port => {
+      const unauthenticated = await Promise.all(requestTargets.map(target => request(port, target)));
+      assert.deepStrictEqual(
+        unauthenticated.map(response => response.status),
+        [401, 401, 401, 401],
+      );
+      for (const response of unauthenticated) {
+        assert.strictEqual(response.headers['www-authenticate'], 'Bearer');
+        assert.strictEqual(response.body.error.code, 'unauthorized');
+        assert.strictEqual(response.body.data, undefined);
+      }
+      const authenticated = await request(port, requestTargets[0], `Bearer ${KEY_ONE}`);
+      assert.notStrictEqual(authenticated.status, 401);
+    });
+  });
+
   it('authenticates oversized v1 request targets before returning validation errors', async () => {
     const oversized = `/v1/search?q=${'x'.repeat(3000)}`;
     await withServer(defaultSecurity(), async port => {

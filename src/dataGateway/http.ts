@@ -25,7 +25,8 @@ async function handleRequest(
   response.setHeader('X-Request-ID', requestId);
   try {
     const requestTarget = request.url ?? '/';
-    if (isV1RequestTarget(requestTarget)) {
+    const url = parseRequestTarget(requestTarget);
+    if (isV1Pathname(url.pathname)) {
       const verified = await authenticate(request, security);
       fingerprint = verified.fingerprint;
       const decision = security.rateLimiter.consume(fingerprint);
@@ -35,7 +36,6 @@ async function handleRequest(
       }
     }
     if (requestTarget.length > MAX_REQUEST_TARGET_LENGTH) throw invalid('Request target is too long');
-    const url = new URL(requestTarget, 'http://127.0.0.1');
     route = auditRoute(url.pathname);
     if (request.method !== 'GET') {
       response.setHeader('Allow', 'GET');
@@ -80,10 +80,16 @@ async function handleRequest(
   }
 }
 
-function isV1RequestTarget(requestTarget: string): boolean {
-  return requestTarget === '/v1'
-    || requestTarget.startsWith('/v1/')
-    || requestTarget.startsWith('/v1?');
+function parseRequestTarget(requestTarget: string): URL {
+  try {
+    return new URL(requestTarget, 'http://127.0.0.1');
+  } catch {
+    throw invalid('Invalid request target');
+  }
+}
+
+function isV1Pathname(pathname: string): boolean {
+  return pathname === '/v1' || pathname.startsWith('/v1/');
 }
 
 async function authenticate(request: IncomingMessage, security: DataGatewayHttpSecurity): Promise<{ fingerprint: string }> {

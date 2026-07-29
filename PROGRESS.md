@@ -65,3 +65,15 @@
 33. 稳定性：1000/1000成功、并发20、errors=0、p50/p95/max=47.3/85.5/177.1ms；清理containers/networks/volumes=0/0/0。
 34. 最终安全/边界：32个白名单文件对9个真实敏感标记扫描命中0；MCP字符串/路径/文件=0；skip/only/TODO/FIXME=0；顶层依赖仅swagger-parser=12.1.0。
 35. Git交付前状态：分支`codex/data-gateway-skill-first`，HEAD仍为基点974a065e；origin为zhingoll fork、upstream为X-lab2017；23个变更条目均待最终白名单核对、提交和仅推送origin。
+
+## API Key 归一化路由绕过修复（2026-07-29）
+1. 目标：任何归一化后落入`/v1`的请求目标必须先认证，且现有HTTP/OpenAPI/Skill/双库能力不退化。
+2. 顺序：核对2bad23eb基线 → 真实HTTP红灯 → pathname共用最小修复 → 全量回归 → 白名单提交并仅推送origin。
+3. 最大风险：Node对absolute/network/dot/encoded-dot目标的解析差异可能让测试未真正走到同一路由，必须用真实socket状态码证明。
+4. 基线：分支与origin均为2bad23eb、工作区clean、origin/upstream正确；`npm run build`=0；离线42 passing (334ms)。
+5. 仅加真实HTTP测试的有效红灯：离线42 passing/1 failing；absolute-form、network-path、点路径、编码点路径四者实际状态均为200，预期均为401。
+6. 最小修复：request-target只解析一次；认证判断与路由共用归一化pathname；解析失败返回脱敏400，超长`/v1`仍先认证。
+7. 红转绿：四种无Key目标均401并带Bearer挑战且无data；absolute-form有效Key对照非401；离线43 passing (292ms)，build退出0。
+8. 双物理ClickHouse：11 passing (2m)；Key 401→200；HF/GitHub恢复7027/5812ms且PID=29488；1000/1000、并发20、errors=0、p95=141.8ms；清理0/0/0。
+9. 仓库外配置仅进程内加载且9/9非空；真实库退出0：sources=2、两源search/profile/metrics、unauthorized=401、redaction=ok。
+10. 交付前边界：相对2bad23eb仅3个白名单文件变化；package/lock=0、skip/todo/only=0、真实敏感标记命中0、diff-check=0、BLOCKED=无。
