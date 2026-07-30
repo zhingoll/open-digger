@@ -1,0 +1,36 @@
+services:
+  opendigger-clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    ports:
+      - "18123:8123"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: opendigger-test-password
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - ./test/fixtures/dataGateway/init-opendigger.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--password", "opendigger-test-password", "--query", "SELECT 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+
+  opengauge-clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    ports:
+      - "18124:8123"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: opengauge-test-password
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - ./test/fixtures/dataGateway/init-opengauge.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--password", "opengauge-test-password", "--query", "SELECT 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s

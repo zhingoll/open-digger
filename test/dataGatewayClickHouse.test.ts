@@ -1,0 +1,438 @@
+import assert from 'assert';
+import { spawn, spawnSync } from 'child_process';
+import { once } from 'events';
+import http from 'http';
+import path from 'path';
+import { performance } from 'perf_hooks';
+import { createClickHouseExecutor } from '../src/dataGateway/clickHouseExecutor';
+import { GitHubAdapter } from '../src/dataGateway/githubAdapter';
+import { HuggingFaceAdapter } from '../src/dataGateway/huggingFaceAdapter';
+
+interface HttpResult {
+  status: number;
+  body: any;
+  text: string;
+}
+
+const GITHUB_URL = process.env.DATA_GATEWAY_TEST_GITHUB_URL ?? 'http://127.0.0.1:18123';
+const HF_URL = process.env.DATA_GATEWAY_TEST_HF_URL ?? 'http://127.0.0.1:18124';
+const GITHUB_PASSWORD = 'opendigger-test-password';
+const HF_PASSWORD = 'opengauge-test-password';
+const HF_CONNECTION_PASSWORD = process.env.DATA_GATEWAY_TEST_HF_PASSWORD ?? HF_PASSWORD;
+const HTTP_PORT = 18125;
+const HTTP_BASE = `http://127.0.0.1:${HTTP_PORT}`;
+const API_KEY = 'system-test-api-key-000000000000001';
+const COMPOSE_FILE = path.resolve('docker-compose.data-gateway.test.yml');
+const COMPOSE_PROJECT = 'open-digger-data-gateway-test';
+const SOURCE_DISCOVERY_ROUTE = '/v1/sources';
+const UNIFIED_SEARCH_ROUTE = '/v1/search?q=qwen&sources=github,huggingface&entity_types=repository,model,dataset&limit=20';
+const HF_PROFILE_ROUTE = '/v1/huggingface/models/Qwen/Qwen3-8B';
+const CROSS_SOURCE_METRIC_ROUTES = [
+  '/v1/github/repositories/X-lab2017/open-digger/metrics',
+  '/v1/huggingface/models/Qwen/Qwen3-8B/metrics',
+];
+const FORBIDDEN_PUBLIC_MARKERS = [
+  'SELECT ', 'opensource', 'huggingface_scrapy', 'DB::Exception',
+  '127.0.0.1:18123', '127.0.0.1:18124', 'password=', '\n    at ',
+  GITHUB_PASSWORD, HF_PASSWORD, API_KEY,
+];
+
+describe('real two-backend Data Gateway system integration', function () {
+  this.timeout(180000);
+
+  const githubConnection = createClickHouseExecutor({ url: GITHUB_URL, username: 'default', password: GITHUB_PASSWORD });
+  const hfConnection = createClickHouseExecutor({ url: HF_URL, username: 'default', password: HF_CONNECTION_PASSWORD });
+  const github = new GitHubAdapter(githubConnection.query, 'opensource');
+  const hf = new HuggingFaceAdapter(hfConnection.query, 'huggingface_scrapy');
+  const runtimeEnv = {
+    ...process.env,
+    OPENDIGGER_CLICKHOUSE_URL: GITHUB_URL,
+    OPENDIGGER_CLICKHOUSE_USER: 'default',
+    OPENDIGGER_CLICKHOUSE_PASSWORD: GITHUB_PASSWORD,
+    OPENDIGGER_CLICKHOUSE_DATABASE: 'opensource',
+    OPENGAUGE_CLICKHOUSE_URL: HF_URL,
+    OPENGAUGE_CLICKHOUSE_USER: 'default',
+    OPENGAUGE_CLICKHOUSE_PASSWORD: HF_CONNECTION_PASSWORD,
+    OPENGAUGE_CLICKHOUSE_DATABASE: 'huggingface_scrapy',
+    DATA_GATEWAY_ADAPTER_TIMEOUT_MS: '1200',
+    DATA_GATEWAY_API_KEYS: API_KEY,
+    DATA_GATEWAY_RATE_LIMIT_MAX_REQUESTS: '2000',
+    DATA_GATEWAY_RATE_LIMIT_WINDOW_MS: '60000',
+  };
+
+  let httpProcess: ReturnType<typeof spawn>;
+  let httpPid = 0;
+  let httpLogs = '';
+
+  before(async () => {
+    const serverFile = path.resolve('.data-gateway-test-dist/src/dataGateway/server.js');
+    httpProcess = spawn(process.execPath, [serverFile], {
+      cwd: process.cwd(),
+      env: { ...runtimeEnv, DATA_GATEWAY_HOST: '127.0.0.1', DATA_GATEWAY_PORT: String(HTTP_PORT) },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: false,
+    });
+    httpPid = httpProcess.pid ?? 0;
+    httpProcess.stdout?.on('data', chunk => { httpLogs += chunk.toString(); });
+    httpProcess.stderr?.on('data', chunk => { httpLogs += chunk.toString(); });
+    await waitUntil(async () => (await requestJson('/v1/sources')).status === 200, 'HTTP server startup');
+
+  });
+
+  after(async () => {
+    await stopChild(httpProcess);
+    await Promise.all([githubConnection.close(), hfConnection.close()]);
+    assertPublic(httpLogs);
+  });
+
+  it('uses two distinct ClickHouse endpoints with mutually absent databases', async () => {
+    assert.notStrictEqual(new URL(GITHUB_URL).port, new URL(HF_URL).port);
+    const githubRows = await githubConnection.query<{ count: number }>('SELECT count() AS count FROM opensource.name_info');
+    const hfRows = await hfConnection.query<{ count: number }>('SELECT uniqExact(id) AS count FROM huggingface_scrapy.model_repos');
+    assert.strictEqual(Number(githubRows[0].count), 3);
+    assert.strictEqual(Number(hfRows[0].count), 3);
+    await assert.rejects(
+      githubConnection.query('SELECT count() FROM huggingface_scrapy.model_repos'),
+      /UNKNOWN_DATABASE|does not exist/,
+    );
+    await assert.rejects(
+      hfConnection.query('SELECT count() FROM opensource.name_info'),
+      /UNKNOWN_DATABASE|does not exist/,
+    );
+  });
+
+  it('executes parameterized Unicode and injection searches against the HF backend', async () => {
+    const injection = await hf.search("模型' OR 1=1 --", { entity_types: ['model'], limit: 10 });
+    assert.strictEqual(injection.data.length, 0);
+    const unicode = await hf.search('模型', { entity_types: ['model'], limit: 10 });
+    assert.deepStrictEqual(unicode.data.map(item => item.entity_id), ['Qwen/模型']);
+  });
+
+  it('returns exact HF model values and ordered histories', async () => {
+    for (const name of ['模型', 'Qwen3-8B']) {
+      const result = await hf.getEntity({ entity_type: 'model', namespace: 'Qwen', name });
+      assert(result);
+      assert.strictEqual(result.data.metrics['huggingface.downloads'].value, 150);
+      assert.deepStrictEqual(
+        result.data.metrics['huggingface.downloads_history'].series?.map(point => point.value),
+        [100, 150],
+      );
+      assert.strictEqual(result.provider, 'opengauge');
+      assert.strictEqual(result.as_of, '2026-07-21T00:00:00.000Z');
+      assert.deepStrictEqual(result.data_quality, []);
+    }
+  });
+
+  it('filters the latest private model and returns the dataset fixture', async () => {
+    assert.strictEqual(await hf.getEntity({ entity_type: 'model', namespace: 'org', name: 'private-now' }), null);
+    const dataset = await hf.getEntity({ entity_type: 'dataset', namespace: 'org', name: 'data' });
+    assert(dataset);
+    assert.strictEqual(dataset.data.attributes.description, 'fixture dataset');
+    assert.strictEqual(dataset.data.metrics['huggingface.downloads'].value, 30);
+  });
+
+  it('returns exact GitHub metadata and OpenRank history', async () => {
+    const repository = await github.getEntity({ entity_type: 'repository', namespace: 'X-lab2017', name: 'open-digger' });
+    assert(repository);
+    assert.strictEqual(repository.data.metrics['github.openrank'].value, 12);
+    assert.deepStrictEqual(repository.data.metrics['github.openrank'].series?.map(point => point.value), [10, 12]);
+    assert.strictEqual(repository.provider, 'opendigger');
+    assert.strictEqual(repository.as_of, '2026-07-01T00:00:00.000Z');
+    assert.deepStrictEqual(repository.data_quality, []);
+  });
+
+  it('serves real HTTP sources, searches, profiles, metrics, privacy, and provenance', async () => {
+    const sources = await expectHttp('/v1/sources');
+    assert.deepStrictEqual(sources.body.data.map((item: any) => item.source), ['github', 'huggingface']);
+
+    const search = await expectHttp('/v1/search?q=qwen&sources=github,huggingface&limit=10');
+    assert.strictEqual(search.body.meta.partial, false);
+    assert(search.body.data.some((item: any) => item.source === 'github' && item.entity_id === 'QwenLM/Qwen-Agent'));
+    assert(search.body.data.some((item: any) => item.source === 'huggingface' && item.entity_id === 'Qwen/Qwen3-8B'));
+
+    const githubProfile = await expectHttp('/v1/github/repositories/X-lab2017/open-digger');
+    assert.strictEqual(githubProfile.body.data.metrics['github.openrank'].value, 12);
+    assert.strictEqual(githubProfile.body.meta.provider, 'opendigger');
+    assert.strictEqual(githubProfile.body.meta.as_of, '2026-07-01T00:00:00.000Z');
+    assert.deepStrictEqual(githubProfile.body.meta.data_quality, []);
+
+    const githubMetrics = await expectHttp('/v1/github/repositories/X-lab2017/open-digger/metrics');
+    assert.deepStrictEqual(githubMetrics.body.data['github.openrank'].series.map((point: any) => point.value), [10, 12]);
+
+    const hfProfile = await expectHttp('/v1/huggingface/models/Qwen/Qwen3-8B');
+    assert.strictEqual(hfProfile.body.data.metrics['huggingface.downloads'].value, 150);
+    assert.deepStrictEqual(hfProfile.body.data.metrics['huggingface.downloads_history'].series.map((point: any) => point.value), [100, 150]);
+    assert.strictEqual(hfProfile.body.meta.provider, 'opengauge');
+    assert.strictEqual(hfProfile.body.meta.as_of, '2026-07-21T00:00:00.000Z');
+    assert.deepStrictEqual(hfProfile.body.meta.data_quality, []);
+
+    const hfMetrics = await expectHttp('/v1/huggingface/models/Qwen/Qwen3-8B/metrics');
+    assert.strictEqual(hfMetrics.body.data['huggingface.downloads'].value, 150);
+
+    const dataset = await expectHttp('/v1/huggingface/datasets/org/data');
+    assert.strictEqual(dataset.body.data.attributes.description, 'fixture dataset');
+    const datasetMetrics = await expectHttp('/v1/huggingface/datasets/org/data/metrics');
+    assert.strictEqual(datasetMetrics.body.data['huggingface.downloads'].value, 30);
+
+    const unicode = await expectHttp(`/v1/search?q=${encodeURIComponent('模型')}`);
+    assert(unicode.body.data.some((item: any) => item.entity_id === 'Qwen/模型'));
+    const privateEntity = await requestJson('/v1/huggingface/models/org/private-now');
+    assert.strictEqual(privateEntity.status, 404);
+    assertPublic(privateEntity.text);
+    assert.strictEqual(httpProcess.exitCode, null);
+  });
+
+  it('rejects an invalid API key and accepts the configured key without leaking either', async () => {
+    const invalid = await requestJson('/v1/sources', 'wrong-system-key-00000000000000001');
+    assert.strictEqual(invalid.status, 401);
+    assert.strictEqual(invalid.body.error.code, 'unauthorized');
+    assertPublic(invalid.text);
+    const valid = await expectHttp('/v1/sources');
+    assert.strictEqual(valid.status, 200);
+    process.stdout.write('AUTH invalid_key_status=401 valid_key_status=200\n');
+  });
+
+  it('serves representative authenticated HTTP workflows for every public operation family', async () => {
+    const listed = (await expectHttp(SOURCE_DISCOVERY_ROUTE)).body;
+    assert.deepStrictEqual(listed.data.map((item: any) => item.source), ['github', 'huggingface']);
+
+    const unifiedResult = (await expectHttp(UNIFIED_SEARCH_ROUTE)).body;
+    assert.strictEqual(unifiedResult.meta.partial, false);
+    assert(unifiedResult.data.some((item: any) => item.source === 'github'));
+    assert(unifiedResult.data.some((item: any) => item.source === 'huggingface'));
+
+    const profile = (await expectHttp(HF_PROFILE_ROUTE)).body;
+    assert.strictEqual(profile.data.entity_id, 'Qwen/Qwen3-8B');
+    assert.strictEqual(profile.data.metrics['huggingface.downloads'].value, 150);
+    assert.strictEqual(profile.meta.provider, 'opengauge');
+    assert.deepStrictEqual(profile.meta.data_quality, []);
+
+    assert.strictEqual(CROSS_SOURCE_METRIC_ROUTES.length, 2);
+    const githubMetrics = (await expectHttp(CROSS_SOURCE_METRIC_ROUTES[0])).body;
+    const hfMetrics = (await expectHttp(CROSS_SOURCE_METRIC_ROUTES[1])).body;
+    assert.strictEqual(githubMetrics.data['github.openrank'].value, 12);
+    assert.strictEqual(hfMetrics.data['huggingface.downloads'].value, 150);
+  });
+
+  it('degrades on HF loss and recovers without restarting HTTP', async () => {
+    const startedAt = performance.now();
+    await stopAndRecover(
+      'opengauge-clickhouse',
+      async () => {
+        await assert.rejects(hfConnection.query('SELECT 1'));
+        const githubProfile = await expectHttp('/v1/github/repositories/X-lab2017/open-digger');
+        assert.strictEqual(githubProfile.body.data.metrics['github.openrank'].value, 12);
+        const partial = await expectHttp(UNIFIED_SEARCH_ROUTE);
+        assert.strictEqual(partial.body.meta.partial, true);
+        assert(partial.body.data.length > 0 && partial.body.data.every((item: any) => item.source === 'github'));
+        assert(partial.body.meta.warnings.some((warning: string) => warning.startsWith('huggingface:')));
+      },
+      async () => {
+        const httpRecovered = await waitForCompleteSearch('qwen');
+        assert.strictEqual(httpRecovered.meta.partial, false);
+      },
+    );
+    assert.strictEqual(httpProcess.pid, httpPid);
+    assert.strictEqual(httpProcess.exitCode, null);
+    process.stdout.write(`RECOVERY hf stopped=confirmed http_partial=true recovered_ms=${Math.round(performance.now() - startedAt)} gateway_pid=${httpPid}\n`);
+  });
+
+  it('degrades on GitHub loss and recovers symmetrically without a Gateway restart', async () => {
+    const startedAt = performance.now();
+    await stopAndRecover(
+      'opendigger-clickhouse',
+      async () => {
+        await assert.rejects(githubConnection.query('SELECT 1'));
+        const hfProfile = await expectHttp('/v1/huggingface/models/Qwen/Qwen3-8B');
+        assert.strictEqual(hfProfile.body.data.metrics['huggingface.downloads'].value, 150);
+        const partial = await expectHttp('/v1/search?q=qwen&sources=github,huggingface');
+        assert.strictEqual(partial.body.meta.partial, true);
+        assert(partial.body.data.length > 0 && partial.body.data.every((item: any) => item.source === 'huggingface'));
+        assert(partial.body.meta.warnings.some((warning: string) => warning.startsWith('github:')));
+      },
+      async () => {
+        const httpRecovered = await waitForCompleteSearch('qwen');
+        assert.strictEqual(httpRecovered.meta.partial, false);
+      },
+    );
+    assert.strictEqual(httpProcess.pid, httpPid);
+    assert.strictEqual(httpProcess.exitCode, null);
+    process.stdout.write(`RECOVERY github stopped=confirmed http_partial=true recovered_ms=${Math.round(performance.now() - startedAt)} gateway_pid=${httpPid}\n`);
+  });
+
+  it('handles 1000 mixed HTTP requests at concurrency 20 with valid responses', async () => {
+    const paths = [
+      '/v1/sources',
+      '/v1/search?q=open-digger&sources=github,huggingface',
+      '/v1/search?q=qwen&sources=github,huggingface',
+      '/v1/github/repositories/X-lab2017/open-digger',
+      '/v1/github/repositories/X-lab2017/open-digger/metrics',
+      '/v1/huggingface/models/Qwen/Qwen3-8B',
+      '/v1/huggingface/models/Qwen/Qwen3-8B/metrics',
+      '/v1/huggingface/datasets/org/data',
+      '/v1/huggingface/datasets/org/data/metrics',
+      `/v1/search?q=${encodeURIComponent('模型')}`,
+    ];
+    const latencies: number[] = [];
+    const errors: string[] = [];
+    let next = 0;
+    let success = 0;
+
+    async function worker(): Promise<void> {
+      while (true) {
+        const index = next++;
+        if (index >= 1000) return;
+        const startedAt = performance.now();
+        try {
+          const response = await requestJson(paths[index % paths.length]);
+          if (response.status !== 200) throw new Error(`status ${response.status}`);
+          if (!response.body || response.body.schema_version !== '1.0' || response.body.data === undefined) {
+            throw new Error('invalid response envelope');
+          }
+          assertPublic(response.text);
+          success++;
+        } catch (error) {
+          errors.push(`${paths[index % paths.length]}: ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+          latencies.push(performance.now() - startedAt);
+        }
+      }
+    }
+
+    await Promise.all(Array.from({ length: 20 }, () => worker()));
+    latencies.sort((left, right) => left - right);
+    const p50 = percentile(latencies, 0.50);
+    const p95 = percentile(latencies, 0.95);
+    const max = latencies[latencies.length - 1];
+    process.stdout.write(`STABILITY requests=1000 concurrency=20 success=${success} errors=${errors.length} p50_ms=${p50.toFixed(1)} p95_ms=${p95.toFixed(1)} max_ms=${max.toFixed(1)} gateway_pid=${httpPid}\n`);
+    assert.strictEqual(errors.length, 0, errors.slice(0, 5).join('\n'));
+    assert.strictEqual(success, 1000);
+    assert.strictEqual(httpProcess.pid, httpPid);
+    assert.strictEqual(httpProcess.exitCode, null);
+  });
+
+  async function stopAndRecover(
+    service: string,
+    degraded: () => Promise<void>,
+    recovered: () => Promise<void>,
+  ): Promise<void> {
+    compose('stop', service);
+    let degradedError: unknown;
+    try { await degraded(); } catch (error) { degradedError = error; }
+    compose('start', service);
+    let recoveryError: unknown;
+    try { await recovered(); } catch (error) { recoveryError = error; }
+    if (degradedError) throw degradedError;
+    if (recoveryError) throw recoveryError;
+  }
+
+  async function waitForCompleteSearch(query: string): Promise<any> {
+    return waitUntil(async () => {
+      const response = await requestJson(`/v1/search?q=${encodeURIComponent(query)}&sources=github,huggingface`);
+      return response.status === 200 && response.body.meta?.partial === false ? response.body : false;
+    }, `HTTP recovery for ${query}`);
+  }
+
+});
+
+async function expectHttp(route: string): Promise<HttpResult> {
+  const response = await requestJson(route);
+  assert.strictEqual(response.status, 200, `${route}: ${response.text}`);
+  assertPublic(response.text);
+  return response;
+}
+
+function requestJson(route: string, apiKey = API_KEY): Promise<HttpResult> {
+  return new Promise((resolve, reject) => {
+    const target = new URL(`${HTTP_BASE}${route}`);
+    const request = http.get({
+      hostname: target.hostname,
+      port: target.port,
+      path: `${target.pathname}${target.search}`,
+      headers: { Authorization: `Bearer ${apiKey}` },
+    }, response => {
+      const chunks: Buffer[] = [];
+      response.on('data', chunk => chunks.push(Buffer.from(chunk)));
+      response.on('end', () => {
+        const text = Buffer.concat(chunks).toString('utf8');
+        try {
+          resolve({ status: response.statusCode ?? 0, body: JSON.parse(text), text });
+        } catch (error) {
+          reject(new Error(`Invalid JSON from ${route}: ${error instanceof Error ? error.message : String(error)}`));
+        }
+      });
+    });
+    request.setTimeout(5000, () => request.destroy(new Error(`HTTP timeout for ${route}`)));
+    request.on('error', reject);
+  });
+}
+
+async function waitUntil<T>(operation: () => Promise<T | false>, description: string, timeoutMs = 30000): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+  while (Date.now() < deadline) {
+    try {
+      const value = await operation();
+      if (value !== false) return value;
+    } catch (error) {
+      lastError = error;
+    }
+    await delay(250);
+  }
+  throw new Error(`${description} timed out${lastError ? `: ${lastError instanceof Error ? lastError.message : String(lastError)}` : ''}`);
+}
+
+function compose(...args: string[]): void {
+  const result = spawnSync('docker', [
+    'compose', '--project-name', COMPOSE_PROJECT, '-f', COMPOSE_FILE, ...args,
+  ], { encoding: 'utf8', shell: false });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`docker compose ${args.join(' ')} failed: ${result.stderr}`);
+}
+
+function assertPublic(value: string): void {
+  for (const marker of FORBIDDEN_PUBLIC_MARKERS) {
+    assert(!value.includes(marker), `Public output leaked internal marker: ${marker}`);
+  }
+}
+
+function percentile(sortedValues: number[], quantile: number): number {
+  return sortedValues[Math.floor((sortedValues.length - 1) * quantile)];
+}
+
+async function stopChild(child: ReturnType<typeof spawn> | undefined): Promise<void> {
+  if (!child || child.exitCode !== null) return;
+  const gracefulExit = once(child, 'exit');
+  child.kill('SIGTERM');
+  await Promise.race([gracefulExit, delay(5000)]);
+  if (child.exitCode === null) {
+    const forcedExit = once(child, 'exit');
+    if (process.platform === 'win32' && child.pid) {
+      spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
+        encoding: 'utf8',
+        shell: false,
+      });
+    } else {
+      child.kill('SIGKILL');
+    }
+    await Promise.race([forcedExit, delay(5000)]);
+    assert.ok(
+      child.exitCode !== null || !isPidAlive(child.pid),
+      `Child process ${child.pid ?? 'unknown'} did not exit`,
+    );
+  }
+}
+
+function isPidAlive(pid: number | undefined): boolean {
+  if (!pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+}

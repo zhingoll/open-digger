@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "outDir": "../.data-gateway-test-dist",
+    "noEmitOnError": true,
+    "inlineSourceMap": false,
+    "sourceMap": true
+  },
+  "include": [
+    "../src/dataGateway/**/*.ts",
+    "./dataGateway*.test.ts",
+    "./fixtures/dataGateway/**/*.ts"
+  ],
+  "exclude": []
+}

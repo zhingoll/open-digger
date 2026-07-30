@@ -15,7 +15,12 @@
     "pull-label-file-test": "tsc && node lib/ci/pull_label_file_test.js",
     "cron": "npm run build && node --max-old-space-size=48000 lib/cron/index.js",
     "test": "CLICKHOUSE_URL=http://ci.open-digger.cn:8123 CLICKHOUSE_USERNAME=default CLICKHOUSE_PASSWORD= mocha",
-    "import-label-to-database": "npm run build && node lib/scripts/importLabelToDatabase.js"
+    "import-label-to-database": "npm run build && node lib/scripts/importLabelToDatabase.js",
+    "build:data-gateway-tests": "node -e \"require('fs').rmSync('.data-gateway-test-dist',{recursive:true,force:true})\" && tsc -p test/tsconfig.dataGateway.json",
+    "test:data-gateway": "npm run build:data-gateway-tests && mocha \".data-gateway-test-dist/test/dataGateway*.test.js\" --ignore \".data-gateway-test-dist/test/dataGatewayClickHouse.test.js\" --reporter spec",
+    "test:data-gateway:clickhouse": "npm run build:data-gateway-tests && node .data-gateway-test-dist/src/dataGateway/integrationTestRunner.js",
+    "test:data-gateway:real": "npm run build:data-gateway-tests && node .data-gateway-test-dist/src/dataGateway/realTestRunner.js",
+    "start:data-gateway": "npm run build && node lib/dataGateway/server.js"
   },
   "repository": {
     "type": "git",
@@ -63,6 +68,7 @@
   },
   "type": "commonjs",
   "devDependencies": {
+    "@apidevtools/swagger-parser": "12.1.0",
     "@octokit/rest": "^19.0.5",
     "@types/ali-oss": "^6.16.7",
     "@types/async": "^3.2.24",

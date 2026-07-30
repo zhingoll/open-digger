@@ -1,0 +1,320 @@
+openapi: 3.1.0
+info:
+  title: OpenDigger Data Gateway API
+  version: 1.0.0
+  description: Read-only unified access to independently stored OpenDigger GitHub and OpenGauge Hugging Face data.
+servers:
+  - url: "{gatewayBaseUrl}"
+    variables:
+      gatewayBaseUrl:
+        default: http://127.0.0.1:3000
+security:
+  - bearerAuth: []
+paths:
+  /v1/sources:
+    get:
+      operationId: listSources
+      summary: List supported sources and entity types
+      responses:
+        "200":
+          description: Supported data sources
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourcesResponse"
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "405": {$ref: "#/components/responses/MethodNotAllowed"}
+        "429": {$ref: "#/components/responses/RateLimited"}
+        "500": {$ref: "#/components/responses/InternalError"}
+  /v1/search:
+    get:
+      operationId: searchEntities
+      summary: Search GitHub repositories and Hugging Face models or datasets
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: {type: string, minLength: 1, maxLength: 256}
+        - name: sources
+          in: query
+          description: Comma-separated source names
+          schema: {type: string, pattern: "^(github|huggingface)(,(github|huggingface))*$"}
+        - name: entity_types
+          in: query
+          description: Comma-separated entity types
+          schema: {type: string, pattern: "^(repository|model|dataset)(,(repository|model|dataset))*$"}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        "200":
+          description: Search results with explicit partial-source metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        "400": {$ref: "#/components/responses/InvalidRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "405": {$ref: "#/components/responses/MethodNotAllowed"}
+        "429": {$ref: "#/components/responses/RateLimited"}
+        "500": {$ref: "#/components/responses/InternalError"}
+        "503": {$ref: "#/components/responses/ServiceUnavailable"}
+  /v1/github/repositories/{namespace}/{name}:
+    get:
+      operationId: getGithubRepositoryProfile
+      summary: Get a GitHub repository profile and metrics
+      parameters:
+        - {$ref: "#/components/parameters/Namespace"}
+        - {$ref: "#/components/parameters/Name"}
+      responses:
+        "200": {$ref: "#/components/responses/EntitySuccess"}
+        "400": {$ref: "#/components/responses/InvalidRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "405": {$ref: "#/components/responses/MethodNotAllowed"}
+        "429": {$ref: "#/components/responses/RateLimited"}
+        "500": {$ref: "#/components/responses/InternalError"}
+        "503": {$ref: "#/components/responses/ServiceUnavailable"}
+  /v1/github/repositories/{namespace}/{name}/metrics:
+    get:
+      operationId: getGithubRepositoryMetrics
+      summary: Get GitHub repository metrics
+      parameters:
+        - {$ref: "#/components/parameters/Namespace"}
+        - {$ref: "#/components/parameters/Name"}
+      responses:
+        "200": {$ref: "#/components/responses/MetricsSuccess"}
+        "400": {$ref: "#/components/responses/InvalidRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "405": {$ref: "#/components/responses/MethodNotAllowed"}
+        "429": {$ref: "#/components/responses/RateLimited"}
+        "500": {$ref: "#/components/responses/InternalError"}
+        "503": {$ref: "#/components/responses/ServiceUnavailable"}
+  /v1/huggingface/models/{namespace}/{name}:
+    get:
+      operationId: getHuggingFaceModelProfile
+      summary: Get a public Hugging Face model profile and metrics
+      parameters:
+        - {$ref: "#/components/parameters/Namespace"}
+        - {$ref: "#/components/parameters/Name"}
+      responses:
+        "200": {$ref: "#/components/responses/EntitySuccess"}
+        "400": {$ref: "#/components/responses/InvalidRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "405": {$ref: "#/components/responses/MethodNotAllowed"}
+        "429": {$ref: "#/components/responses/RateLimited"}
+        "500": {$ref: "#/components/responses/InternalError"}
+        "503": {$ref: "#/components/responses/ServiceUnavailable"}
+  /v1/huggingface/models/{namespace}/{name}/metrics:
+    get:
+      operationId: getHuggingFaceModelMetrics
+      summary: Get public Hugging Face model metrics
+      parameters:
+        - {$ref: "#/components/parameters/Namespace"}
+        - {$ref: "#/components/parameters/Name"}
+      responses:
+        "200": {$ref: "#/components/responses/MetricsSuccess"}
+        "400": {$ref: "#/components/responses/InvalidRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "405": {$ref: "#/components/responses/MethodNotAllowed"}
+        "429": {$ref: "#/components/responses/RateLimited"}
+        "500": {$ref: "#/components/responses/InternalError"}
+        "503": {$ref: "#/components/responses/ServiceUnavailable"}
+  /v1/huggingface/datasets/{namespace}/{name}:
+    get:
+      operationId: getHuggingFaceDatasetProfile
+      summary: Get a public Hugging Face dataset profile and metrics
+      parameters:
+        - {$ref: "#/components/parameters/Namespace"}
+        - {$ref: "#/components/parameters/Name"}
+      responses:
+        "200": {$ref: "#/components/responses/EntitySuccess"}
+        "400": {$ref: "#/components/responses/InvalidRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "405": {$ref: "#/components/responses/MethodNotAllowed"}
+        "429": {$ref: "#/components/responses/RateLimited"}
+        "500": {$ref: "#/components/responses/InternalError"}
+        "503": {$ref: "#/components/responses/ServiceUnavailable"}
+  /v1/huggingface/datasets/{namespace}/{name}/metrics:
+    get:
+      operationId: getHuggingFaceDatasetMetrics
+      summary: Get public Hugging Face dataset metrics
+      parameters:
+        - {$ref: "#/components/parameters/Namespace"}
+        - {$ref: "#/components/parameters/Name"}
+      responses:
+        "200": {$ref: "#/components/responses/MetricsSuccess"}
+        "400": {$ref: "#/components/responses/InvalidRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "405": {$ref: "#/components/responses/MethodNotAllowed"}
+        "429": {$ref: "#/components/responses/RateLimited"}
+        "500": {$ref: "#/components/responses/InternalError"}
+        "503": {$ref: "#/components/responses/ServiceUnavailable"}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Key
+      description: Store this value in the client's secure credential store
+  parameters:
+    Namespace:
+      name: namespace
+      in: path
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 256}
+    Name:
+      name: name
+      in: path
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 256}
+  responses:
+    EntitySuccess:
+      description: Entity profile
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/EntityResponse"}
+    MetricsSuccess:
+      description: Entity metrics
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/MetricsResponse"}
+    InvalidRequest:
+      description: Invalid path or query parameter
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    Unauthorized:
+      description: Missing or invalid Bearer API key
+      headers:
+        WWW-Authenticate:
+          schema: {type: string, const: Bearer}
+          description: Required authentication scheme
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    NotFound:
+      description: Route or entity not found
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    MethodNotAllowed:
+      description: Only GET is supported
+      headers:
+        Allow: {schema: {type: string}, description: Allowed HTTP methods}
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    RateLimited:
+      description: Verified API key exceeded its configured request window
+      headers:
+        Retry-After: {schema: {type: integer, minimum: 1}, description: Seconds before retrying}
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    InternalError:
+      description: Sanitized internal failure
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+    ServiceUnavailable:
+      description: All requested data sources are unavailable
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorResponse"}}}
+  schemas:
+    SchemaVersion: {type: string, const: "1.0"}
+    DataSource: {type: string, enum: [github, huggingface]}
+    EntityType: {type: string, enum: [repository, model, dataset]}
+    SourceDescription:
+      type: object
+      additionalProperties: false
+      required: [source, provider, entity_types]
+      properties:
+        source: {$ref: "#/components/schemas/DataSource"}
+        provider: {type: string, enum: [opendigger, opengauge]}
+        entity_types: {type: array, items: {$ref: "#/components/schemas/EntityType"}}
+    SourcesResponse:
+      type: object
+      additionalProperties: false
+      required: [schema_version, data, meta]
+      properties:
+        schema_version: {$ref: "#/components/schemas/SchemaVersion"}
+        data: {type: array, items: {$ref: "#/components/schemas/SourceDescription"}}
+        meta: {type: object, required: [as_of], properties: {as_of: {type: string, format: date-time}}}
+    SearchResult:
+      type: object
+      additionalProperties: false
+      required: [source, entity_type, entity_id, name, source_url]
+      properties:
+        source: {$ref: "#/components/schemas/DataSource"}
+        entity_type: {$ref: "#/components/schemas/EntityType"}
+        entity_id: {type: string}
+        name: {type: string}
+        source_url: {type: string, format: uri}
+    SearchResponse:
+      type: object
+      additionalProperties: false
+      required: [schema_version, data, meta]
+      properties:
+        schema_version: {$ref: "#/components/schemas/SchemaVersion"}
+        data: {type: array, items: {$ref: "#/components/schemas/SearchResult"}}
+        meta:
+          type: object
+          additionalProperties: false
+          required: [as_of, partial, warnings]
+          properties:
+            as_of: {type: string, format: date-time}
+            partial: {type: boolean}
+            warnings: {type: array, items: {type: string}}
+    MetricSeriesPoint:
+      type: object
+      required: [time, value]
+      properties: {time: {type: string, format: date-time}, value: {type: [number, "null"]}}
+    MetricValue:
+      type: object
+      required: [value, observed_at]
+      properties:
+        value: {type: [number, string, boolean, "null"]}
+        unit: {type: [string, "null"]}
+        observed_at: {type: string, format: date-time}
+        series: {type: array, items: {$ref: "#/components/schemas/MetricSeriesPoint"}}
+    Entity:
+      type: object
+      required: [source, entity_type, entity_id, name, source_url, attributes, metrics]
+      properties:
+        source: {$ref: "#/components/schemas/DataSource"}
+        entity_type: {$ref: "#/components/schemas/EntityType"}
+        entity_id: {type: string}
+        name: {type: string}
+        source_url: {type: string, format: uri}
+        attributes: {type: object, additionalProperties: true}
+        metrics: {type: object, additionalProperties: {$ref: "#/components/schemas/MetricValue"}}
+    ResponseMeta:
+      type: object
+      additionalProperties: false
+      required: [as_of, provider, data_quality, warnings]
+      properties:
+        as_of: {type: string, format: date-time}
+        provider: {type: string, enum: [opendigger, opengauge]}
+        data_quality: {type: array, items: {type: string}}
+        warnings: {type: array, items: {type: string}}
+    EntityResponse:
+      type: object
+      additionalProperties: false
+      required: [schema_version, data, meta]
+      properties:
+        schema_version: {$ref: "#/components/schemas/SchemaVersion"}
+        data: {$ref: "#/components/schemas/Entity"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    MetricsResponse:
+      type: object
+      additionalProperties: false
+      required: [schema_version, data, meta]
+      properties:
+        schema_version: {$ref: "#/components/schemas/SchemaVersion"}
+        data: {type: object, additionalProperties: {$ref: "#/components/schemas/MetricValue"}}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code: {type: string, enum: [invalid_request, unauthorized, rate_limited, not_found, method_not_allowed, service_unavailable, internal_error]}
+            message: {type: string}
